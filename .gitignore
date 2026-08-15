@@ -1,0 +1,14 @@
+# Distribution artifacts and raw source material
+output/
+卡牌素材/
+
+# Runtime secrets and local state
+.env
+.env.*
+*.log
+
+# Editor and OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
