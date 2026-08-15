@@ -42,6 +42,7 @@
     chooseFirst: $("#chooseFirstButton"),
     chooseSecond: $("#chooseSecondButton"),
     responseOverlay: $("#responseOverlay"),
+    responseEyebrow: $("#responseEyebrow"),
     responseTitle: $("#responseTitle"),
     responseDetail: $("#responseDetail"),
     responseCards: $("#responseCards"),
@@ -771,17 +772,21 @@ function resetUtilityModal() {
   }
 
   function showViewHandChoice(choice) {
+    resetUtilityModal();
     const cards = choice.cards || game.viewOpponentHand(choice.playerIndex);
+    elements.responseEyebrow.textContent = "EFFECT RESOLUTION";
     elements.responseTitle.textContent = "「查看对方手牌」效果";
     elements.responseDetail.textContent = "以下仅展示给你。本次查看结束后，继续正常回合流程。";
     elements.responseCards.innerHTML = cards.length ? cards.map((card) => cardHtml(card, choice.opponentIndex, { response: true })).join("") : '<span class="empty-hand">对方没有手牌</span>';
-    elements.cancelChoice.hidden = false;
-    elements.cancelChoice.textContent = "关闭展示";
+    elements.confirmChoice.hidden = false;
+    elements.confirmChoice.textContent = "已查看，继续";
     elements.responseOverlay.classList.remove("hidden");
     return awaitUtilityModal("view-hand");
   }
 
   function showPaymentChoice(choice) {
+    resetUtilityModal();
+    elements.responseEyebrow.textContent = "EFFECT CHOICE";
     elements.responseTitle.textContent = `「${choice.source}」的费用选择`;
     elements.responseDetail.textContent = `该对抗技能允许你支付 ${choice.cost} 点协奏费用；支付后，你将受到 ${choice.damage} 点伤害。`;
     elements.responseCards.innerHTML = '<span class="empty-hand">请根据当前局势选择是否支付。</span>';
@@ -1668,6 +1673,8 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
     aiRunning = false;
     uiLocked = false;
     if (!game.pending || game.pending.responder !== 0) return;
+    resetUtilityModal();
+    elements.responseEyebrow.textContent = "FACE-DOWN CONTEST";
     elements.responseTitle.textContent = `${game.players[1].name} 已盖放 1 张手牌`;
     elements.responseDetail.textContent = "选择 1 张费用足够的手牌盖放。双方选择完成后才会同时翻开。";
     const legal = game.legalResponses(0);
@@ -1793,6 +1800,7 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
   elements.endTurn.addEventListener("click", endHumanTurn);
   elements.passDefense.addEventListener("click", () => resolveHumanResponse(null));
   elements.confirmChoice.addEventListener("click", async () => {
+    if (utilityModalMode === "view-hand") { closeUtilityModal(); return; }
     if (utilityModalMode !== "payment") return;
     const result = game.resolvePaymentChoice(0, true);
     if (!result.ok) return toast(result.reason);
