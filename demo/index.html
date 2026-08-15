@@ -144,6 +144,7 @@
       <h2 id="mainMenuTitle">鸣潮：对决</h2>
       <div class="main-menu-layout">
         <nav class="main-menu-list" aria-label="主菜单">
+          <button id="returnToGameButton" class="menu-entry active" type="button" hidden><b>00</b><span>返回当前对局</span></button>
           <button class="menu-entry active" data-menu-page="start" type="button"><b>01</b><span>开始游戏</span></button>
           <button class="menu-entry" data-menu-page="load" type="button"><b>02</b><span>加载游戏</span></button>
           <button class="menu-entry" data-menu-page="settings" type="button"><b>03</b><span>设置</span></button>
@@ -182,7 +183,6 @@
           <button id="saveApiButton" class="primary-button wide" type="button">应用此 API Key</button>
           <button id="useLocalAiButton" class="secondary-button wide" type="button">切换为本地 AI</button>
           <small>若需要让 Key 在下次启动后继续生效，可双击文件夹内的“配置 AI.vbs”。</small>
-          <button id="returnToGameButton" class="primary-button wide" type="button">返回当前对局</button>
         </section>
         <section class="menu-page hidden" id="menuStatsPanel">
           <p class="modal-lead">数据只保存在当前浏览器。</p>

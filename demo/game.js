@@ -1750,6 +1750,7 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
 
   function showMainMenu() {
     if (game?.winner != null) recordMatch();
+    elements.returnToGame.hidden = !(game && game.winner == null);
     elements.responseOverlay.classList.add("hidden");
     elements.gameOverOverlay.classList.add("hidden");
     elements.setupOverlay.classList.add("hidden");
@@ -1831,7 +1832,7 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
   elements.tutorialExplainConfirm.addEventListener("click", continueTutorial);
   elements.savePlayerName.addEventListener("click", () => savePlayerName(elements.playerNameSettingsInput.value));
   elements.returnToGame.addEventListener("click", () => {
-    if (!game) return toast("当前没有进行中的对局");
+    if (!game || game.winner != null) return toast("当前没有可返回的对局");
     elements.mainMenuOverlay.classList.add("hidden");
     elements.setupOverlay.classList.toggle("hidden", !game.setupPhase);
     render();
