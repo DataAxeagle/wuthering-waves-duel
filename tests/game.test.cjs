@@ -66,6 +66,23 @@ test("蓝色战胜红色时按蓝卡伤害值造成伤害", () => {
   assert.equal(result.winningPlayer, 1); assert.equal(game.players[0].hp, 17);
 });
 
+test("累计承伤记录实际扣除的生命，治疗单独记录且不会掩盖承伤", () => {
+  const game = start();
+  game.players[0].hp = 7;
+  assert.equal(game.damage(0, 10, "致命测试"), 7);
+  assert.equal(game.players[0].hp, 0);
+  assert.equal(game.matchStats.damageReceived[0], 7);
+  assert.equal(game.matchStats.damageDealt[1], 7);
+
+  const healed = start();
+  healed.damage(0, 18, "累计承伤测试");
+  assert.equal(healed.heal(0, 5), 5);
+  assert.equal(healed.players[0].hp, 7);
+  assert.equal(healed.matchStats.damageReceived[0], 18);
+  assert.equal(healed.matchStats.healingReceived[0], 5);
+  assert.equal(healed.matchStats.damageReceived[0] - healed.matchStats.healingReceived[0], 13);
+});
+
 test("战斗开始后锁定主要行动；无追击的战斗结算后直接进入对手回合", () => {
   const game = start();
   const left = card(game, { name: "左蓝", kind: "dodge", tone: "tide", attack: 0 });

@@ -93,6 +93,8 @@
   let game;
   let selectedCardUid = null;
   let selectedHeroIndex = null;
+  // 角色卡是公开信息；记录归属方，保证可查看对方角色技能，但不能把对方选择误用于己方操作。
+  let selectedHeroOwnerIndex = 0;
   let aiRunning = false;
   let uiLocked = false;
   let interactionMode = null;
@@ -146,7 +148,13 @@
       title: "第五步：结束回合",
       instruction: "本次战斗已经自动结束你的回合，因此不需要再点击“结束回合”。若红色行动卡获胜并触发追击，才可选择继续连击或停止追击。",
       rule: "普通战斗结算后，行动区的牌会进入弃牌区，再轮到对方抽牌并行动。此后你可以按自己的策略自由选择主要阶段行动。",
-      next: "你的首回合教学已完成。点击“确定”后，后续对局完全恢复正常操作。",
+      next: "最后介绍战场界面。点击“确定”后查看费用、角色、手牌与卡牌详情的位置。",
+    },
+    layout: {
+      title: "第六步：战场界面导览",
+      instruction: "左下与左上是双方 COST 和协奏区；中央是角色区；下方是你的手牌；点击任意公开角色或手牌，可在右上查看完整效果。",
+      rule: "协奏区的每张卡提供 1 点 COST，支付后进入弃牌区。中央三张角色卡中，带高亮的是领队。下方手牌仅你自己可见；对方角色卡是公开信息，点击后同样能查看其叠放等级与全部技能。",
+      next: "界面导览完成。后续可自由行动，并随时点击公开角色或自己的手牌查看效果。",
     },
   };
 
@@ -195,18 +203,24 @@
     tutorial.mode = "explain";
     tutorial.completed = step;
     selectedCardUid = null;
-    if (step === "upgrade") selectedHeroIndex = game.players[0].activeHero;
-    if (step === "switch") selectedHeroIndex = null;
+    if (step === "upgrade") { selectedHeroOwnerIndex = 0; selectedHeroIndex = game.players[0].activeHero; }
+    if (step === "switch") { selectedHeroOwnerIndex = 0; selectedHeroIndex = null; }
   }
 
   function continueTutorial() {
     if (tutorial.mode !== "explain") return;
     const completed = tutorial.completed;
-    const steps = ["charge", "upgrade", "switch", "battle", "end"];
+    const steps = ["charge", "upgrade", "switch", "battle", "end", "layout"];
     // 现行规则中非追击战斗结算会直接结束回合；保留结束回合讲解，但不要求玩家执行不可能的额外操作。
     if (completed === "battle") {
       tutorial.mode = "explain";
       tutorial.completed = "end";
+      render();
+      return;
+    }
+    if (completed === "end") {
+      tutorial.mode = "explain";
+      tutorial.completed = "layout";
       render();
       return;
     }
@@ -236,14 +250,16 @@
     elements.tutorialExplainTitle.textContent = `${step.title}：规则说明`;
     elements.tutorialExplainRule.textContent = step.rule;
     elements.tutorialExplainNext.textContent = step.next;
-    elements.tutorialExplainConfirm.textContent = tutorial.completed === "end" ? "确定，开始自由对局" : "确定，进行下一步";
+    elements.tutorialExplainConfirm.textContent = tutorial.completed === "layout" ? "确定，开始自由对局" : "确定，进行下一步";
   }
 
   function loadLocalStats() {
-    const empty = { games: 0, wins: 0, damageDealt: 0, damageReceived: 0, cardsPlayed: 0 };
+    const empty = { games: 0, wins: 0, damageDealt: 0, damageReceived: 0, healingReceived: 0, cardsPlayed: 0 };
     try {
       const saved = JSON.parse(localStorage.getItem(STATS_KEY) || "null");
-      return saved && Object.keys(empty).every((key) => Number.isFinite(saved[key])) ? Object.assign(empty, saved) : empty;
+      if (!saved || typeof saved !== "object") return empty;
+      Object.keys(empty).forEach((key) => { if (Number.isFinite(saved[key])) empty[key] = saved[key]; });
+      return empty;
     } catch { return empty; }
   }
 
@@ -253,9 +269,11 @@
 
   function statsHtml(stats) {
     const rate = stats.games ? `${Math.round(stats.wins / stats.games * 100)}%` : "0%";
+    const healingReceived = Number(stats.healingReceived) || 0;
+    const netHpLoss = Math.max(0, (Number(stats.damageReceived) || 0) - healingReceived);
     return [
       [stats.games, "总对局"], [stats.wins, "胜场"], [rate, "胜率"],
-      [stats.damageDealt, "造成伤害"], [stats.damageReceived, "受到伤害"], [stats.cardsPlayed, "打出卡牌"],
+      [stats.damageDealt, "造成伤害"], [stats.damageReceived, "累计受到伤害"], [healingReceived, "恢复生命"], [netHpLoss, "净生命损失"], [stats.cardsPlayed, "打出卡牌"],
     ].map(([value, label]) => `<div class="stat-item"><b>${escapeHtml(value)}</b><small>${label}</small></div>`).join("");
   }
 
@@ -297,7 +315,7 @@ function loadSavedGame() {
     const result = restored.loadSnapshot(saved.snapshot);
     if (!result.ok) return toast(result.reason);
     game = restored; if (playerName) game.players[0].name = playerName; aiDifficulty = DIFFICULTIES[saved.aiDifficulty] ? saved.aiDifficulty : "novice"; applyAiIdentity();
-    selectedCardUid = null; selectedHeroIndex = game.players[0]?.activeHero || 0; aiRunning = false; uiLocked = false; interactionMode = null; upgradeHeroIndex = null; setupMulliganUids = []; upgradeDiscardUids = []; matchRecorded = false; lastAnimatedDrawTurn = game.lastTurnDraw?.turn || -1; tutorial = { mode: "off", step: "charge", completed: null };
+    selectedCardUid = null; selectedHeroOwnerIndex = 0; selectedHeroIndex = game.players[0]?.activeHero || 0; aiRunning = false; uiLocked = false; interactionMode = null; upgradeHeroIndex = null; setupMulliganUids = []; upgradeDiscardUids = []; matchRecorded = false; lastAnimatedDrawTurn = game.lastTurnDraw?.turn || -1; tutorial = { mode: "off", step: "charge", completed: null };
     elements.mainMenuOverlay.classList.add("hidden"); elements.gameOverOverlay.classList.add("hidden"); elements.responseOverlay.classList.add("hidden"); elements.setupOverlay.classList.toggle("hidden", !game.setupPhase);
     render(); checkAiService().then(render); toast("已加载保存的对局");
     if (!game.setupPhase && aiMayAct()) setTimeout(runAiTurn, 500);
@@ -344,7 +362,7 @@ function loadSavedGame() {
     elements.menuStats.innerHTML = statsHtml(localStats);
     if (game) elements.gameOverStats.innerHTML = statsHtml({
       games: 1, wins: game.winner === 0 ? 1 : 0,
-      damageDealt: game.matchStats.damageDealt[0], damageReceived: game.matchStats.damageReceived[0], cardsPlayed: game.matchStats.cardsPlayed[0],
+      damageDealt: game.matchStats.damageDealt[0], damageReceived: game.matchStats.damageReceived[0], healingReceived: game.matchStats.healingReceived[0], cardsPlayed: game.matchStats.cardsPlayed[0],
     });
   }
 
@@ -355,6 +373,7 @@ function loadSavedGame() {
     localStats.wins += game.winner === 0 ? 1 : 0;
     localStats.damageDealt += game.matchStats.damageDealt[0];
     localStats.damageReceived += game.matchStats.damageReceived[0];
+    localStats.healingReceived += game.matchStats.healingReceived[0];
     localStats.cardsPlayed += game.matchStats.cardsPlayed[0];
     persistStats();
     renderStats();
@@ -808,12 +827,12 @@ async function animateContestWithCost(result) {
 
   function heroHtml(hero, index, player, interactive) {
     const active = index === player.activeHero;
-    const selected = player.index === 0 && index === selectedHeroIndex;
+    const selected = player.index === selectedHeroOwnerIndex && index === selectedHeroIndex;
     const choiceSelected = player.index === 0 && interactionMode === "upgrade-hero" && index === selectedHeroIndex;
     const faceArt = heroArtPath(hero);
     const stackedLevels = hero.stack.map((card) => `Lv.${card.level}`).join(" + ");
     const stackLayers = hero.stack.slice(0, -1).map((_, stackIndex) => `<i class="hero-stack-layer" style="--stack-index:${stackIndex + 1}"></i>`).join("");
-    return `<button type="button" class="hero-card full-face-hero ${active ? "active" : ""} ${selected ? "selected" : ""} ${choiceSelected ? "choice-selected" : ""}" data-hero="${index}" ${interactive ? "" : "tabindex=\"-1\""} aria-label="${escapeHtml(hero.name)} ${escapeHtml(stackedLevels)}${active ? '，当前领队' : ''}"><span class="hero-stack-layers" aria-hidden="true">${stackLayers}</span><img class="hero-face-image" src="${escapeHtml(faceArt)}" alt="${escapeHtml(hero.name)} ${escapeHtml(stackedLevels)} 角色卡"><span class="hero-stack-count">${escapeHtml(stackedLevels)}</span></button>`;
+    return `<button type="button" class="hero-card full-face-hero ${active ? "active" : ""} ${selected ? "selected" : ""} ${choiceSelected ? "choice-selected" : ""}" data-hero="${index}" data-hero-owner="${player.index}" ${interactive ? "" : "tabindex=\"-1\""} aria-label="${escapeHtml(hero.name)} ${escapeHtml(stackedLevels)}${active ? '，当前领队' : ''}"><span class="hero-stack-layers" aria-hidden="true">${stackLayers}</span><img class="hero-face-image" src="${escapeHtml(faceArt)}" alt="${escapeHtml(hero.name)} ${escapeHtml(stackedLevels)} 角色卡"><span class="hero-stack-count">${escapeHtml(stackedLevels)}</span></button>`;
   }
   function zoneHtml(player, interactive) {
     const hiddenHeroes = player.heroes.map(() => `
@@ -836,11 +855,21 @@ async function animateContestWithCost(result) {
   }
 
   function renderZones() {
-    elements.aiZone.innerHTML = zoneHtml(game.players[1], false);
+    elements.aiZone.innerHTML = zoneHtml(game.players[1], true);
     elements.playerZone.innerHTML = zoneHtml(game.players[0], true);
+    elements.aiZone.querySelectorAll("[data-hero]").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (uiLocked) return;
+        selectedHeroOwnerIndex = 1;
+        selectedHeroIndex = Number(button.dataset.hero);
+        selectedCardUid = null;
+        render();
+      });
+    });
     elements.playerZone.querySelectorAll("[data-hero]").forEach((button) => {
       button.addEventListener("click", () => {
         if (uiLocked) return;
+        selectedHeroOwnerIndex = 0;
         selectedHeroIndex = Number(button.dataset.hero);
         // 普通查看时，角色与手牌只能选中其一，避免旧手牌遮住角色的叠放技能预览。
         if (interactionMode !== "upgrade-card" && interactionMode !== "hand-limit") selectedCardUid = null;
@@ -916,11 +945,13 @@ async function animateContestWithCost(result) {
         if (interactionMode === "charge-select" || interactionMode === "battle-select") {
           selectedCardUid = selectedCardUid === button.dataset.card ? null : button.dataset.card;
           selectedHeroIndex = null;
+          selectedHeroOwnerIndex = 0;
           render();
           return;
         }
         selectedCardUid = selectedCardUid === button.dataset.card ? null : button.dataset.card;
         selectedHeroIndex = null;
+        selectedHeroOwnerIndex = 0;
         render();
       });
     });
@@ -985,7 +1016,8 @@ async function animateContestWithCost(result) {
 
   function renderSelection() {
     const card = selectedCard();
-    const hero = selectedHeroIndex == null ? null : game.players[0].heroes[selectedHeroIndex];
+    const heroOwner = selectedHeroOwnerIndex === 1 ? game.players[1] : game.players[0];
+    const hero = selectedHeroIndex == null ? null : heroOwner.heroes[selectedHeroIndex];
     if (card) {
       const metrics = [];
       const stats = game.cardStats(0, card);
@@ -1005,9 +1037,9 @@ async function animateContestWithCost(result) {
       const stackedEffects = hero.stack.map((roleCard) => `<li><b>Lv.${roleCard.level}</b><span>${escapeHtml(roleCard.text || "该等级没有额外文字效果。")}</span></li>`).join("");
       elements.selection.classList.remove("empty");
       elements.selection.innerHTML = `<div class="preview-card" style="--tone-color:${toneStyle(hero.passiveTone)}">
-        <span class="tone-tag">${escapeHtml(toneLabel(hero.passiveTone))} // 角色技能</span>
+        <span class="tone-tag">${escapeHtml(toneLabel(hero.passiveTone))} // ${heroOwner.index === 0 ? "己方角色技能" : "对方角色技能"}</span>
         <h3>${escapeHtml(hero.name)} · Lv.${hero.level}</h3>
-        <span class="cost-line">已叠放 ${hero.stack.length} 张角色卡${selectedHeroIndex === game.players[0].activeHero ? " // 当前领队" : " // 后台角色"}</span>
+        <span class="cost-line">${heroOwner.index === 1 ? "对方" : "己方"}已叠放 ${hero.stack.length} 张角色卡${selectedHeroIndex === heroOwner.activeHero ? " // 当前领队" : " // 后台角色"}</span>
         <ul class="stack-effects">${stackedEffects}</ul>
       </div>`;
       return;
@@ -1038,7 +1070,7 @@ async function animateContestWithCost(result) {
     elements.charge.querySelector("small").textContent = interactionMode === "charge-select" ? "请单独选择手牌后确认" : "选择 1 张手牌放入协奏区";
     elements.charge.disabled = !(tutorialAllows("charge") && canTakeMainAction && !upgrading && !human.chargedThisTurn);
     elements.upgrade.disabled = !(tutorialAllows("upgrade") && canTakeMainAction && !actionSelecting && (upgrading || (!human.upgradedThisTurn && human.hand.length && human.heroes.some((hero) => hero.level < 2))));
-    elements.switch.disabled = !(tutorialAllows("switch") && canTakeMainAction && !upgrading && !actionSelecting && !human.switchedThisTurn && selectedHeroIndex != null && selectedHeroIndex !== human.activeHero);
+    elements.switch.disabled = !(tutorialAllows("switch") && canTakeMainAction && !upgrading && !actionSelecting && !human.switchedThisTurn && selectedHeroOwnerIndex === 0 && selectedHeroIndex != null && selectedHeroIndex !== human.activeHero);
     const pursuitAllowed = pursuing && card && game.legalPursuitCards(0).some((item) => item.uid === card.uid);
     elements.play.querySelector("b").textContent = pursuing ? "继续红色连击" : interactionMode === "battle-select" ? "取消战斗选择" : "进入战斗";
     elements.play.querySelector("small").textContent = pursuing ? "只能打出红色行动卡，费用须足够" : interactionMode === "battle-select" ? "请单独选择手牌后确认" : "双方同时翻牌后才扣除费用";
@@ -1104,6 +1136,7 @@ async function animateContestWithCost(result) {
     elements.setupMulliganCards.querySelectorAll("[data-setup-mulligan]").forEach((button) => button.addEventListener("click", () => { const uid = button.dataset.setupMulligan; setupMulliganUids = setupMulliganUids.includes(uid) ? setupMulliganUids.filter((id) => id !== uid) : [...setupMulliganUids, uid]; renderSetup(); }));
     elements.setupHeroes.querySelectorAll("[data-hero]").forEach((button) => {
       button.addEventListener("click", () => {
+        selectedHeroOwnerIndex = 0;
         selectedHeroIndex = Number(button.dataset.hero);
         game.chooseLeader(0, selectedHeroIndex);
         render();
@@ -1169,6 +1202,7 @@ async function animateContestWithCost(result) {
     upgradeHeroIndex = null;
     upgradeDiscardUids = [];
     selectedCardUid = null;
+    selectedHeroOwnerIndex = 0;
     selectedHeroIndex = null;
 
     render();
@@ -1200,7 +1234,7 @@ async function animateContestWithCost(result) {
 
   async function doSwitch() {
     if (!tutorialAllows("switch")) return toast(`新手指引中请先完成：${TUTORIAL_STEPS[tutorial.step].title}`);
-    if (selectedHeroIndex == null) return;
+    if (selectedHeroOwnerIndex !== 0 || selectedHeroIndex == null) return toast("请选择己方的一名后台角色");
     uiLocked = true;
     const result = game.switchHero(0, selectedHeroIndex);
     render();
@@ -1356,6 +1390,7 @@ async function animateContestWithCost(result) {
       return toast(result.reason);
     }
     selectedCardUid = null;
+    selectedHeroOwnerIndex = 0;
     selectedHeroIndex = null;
     if (result.needsHandDiscard) {
       interactionMode = "hand-limit";
@@ -1684,6 +1719,7 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
     applyAiIdentity();
     if (game.coinWinner === 1) game.chooseInitiative(1, 1);
     selectedCardUid = null;
+    selectedHeroOwnerIndex = 0;
     selectedHeroIndex = 0;
     aiRunning = false;
     uiLocked = false;
@@ -1736,11 +1772,12 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
   }
 
   async function confirmSetup() {
-    const target = selectedHeroIndex == null ? 0 : selectedHeroIndex;
+    const target = selectedHeroOwnerIndex !== 0 || selectedHeroIndex == null ? 0 : selectedHeroIndex;
     game.chooseLeader(0, target);
     const result = game.confirmSetup(0);
     if (!result.ok) return toast(result.reason);
     elements.setupOverlay.classList.add("hidden");
+    selectedHeroOwnerIndex = 0;
     selectedHeroIndex = target;
     render();
     await animateTurnDraw();
@@ -1812,7 +1849,7 @@ if (!ai.upgradedThisTurn && plan.upgrade) {
   $("#playAgainButton").addEventListener("click", newGame);
   elements.backToMenu.addEventListener("click", showMainMenu);
   elements.clearStats.addEventListener("click", () => {
-    localStats = { games: 0, wins: 0, damageDealt: 0, damageReceived: 0, cardsPlayed: 0 };
+    localStats = { games: 0, wins: 0, damageDealt: 0, damageReceived: 0, healingReceived: 0, cardsPlayed: 0 };
     persistStats();
     renderStats();
     toast("本地战绩已清空");
