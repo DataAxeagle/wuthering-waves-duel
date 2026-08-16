@@ -203,6 +203,7 @@
       </div>
     </div>
   </div>
+  <div id="tutorialSpotlight" class="tutorial-spotlight hidden" aria-hidden="true"></div>
   <section id="tutorialHint" class="tutorial-hint hidden" aria-live="polite"></section>
   <section id="tutorialExplainOverlay" class="tutorial-explain hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialExplainTitle">
     <div class="tutorial-explain-card">
@@ -232,8 +233,8 @@
       <h2 id="setupTitle">选择我方领队</h2>
       <p id="coinResult" class="modal-lead"></p><div id="initiativeChoices" class="initiative-choices"><button id="chooseFirstButton" class="secondary-button" type="button">选择先手</button><button id="chooseSecondButton" class="secondary-button" type="button">选择后手</button></div>
       <p class="modal-lead">双方角色牌仍为盖放状态。你可以查看自己的三名角色，选择领队后双方同时翻开。</p>
-      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：可标记任意张换掉</p><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div>
-      <button id="mulliganButton" class="secondary-button wide" type="button">确认换牌（可不换）</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
+      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：点击可在右侧预览效果；需要换牌时先点击下方按钮</p><div class="setup-mulligan-layout"><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div><aside id="setupMulliganPreview" class="setup-mulligan-preview"><span class="empty-glyph">◇</span><p>点击上方手牌预览效果</p></aside></div>
+      <button id="mulliganButton" class="secondary-button wide" type="button">需要换牌</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
     </div>
   </div>
 
