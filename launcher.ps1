@@ -8,6 +8,18 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSCommandPath
+$DiagnosticLog = Join-Path $ProjectRoot 'launcher-diagnostic.log'
+trap {
+  $details = @(
+    "Time: $([DateTime]::Now.ToString('s'))",
+    "PowerShell: $($PSVersionTable.PSVersion)",
+    "Line: $($_.InvocationInfo.ScriptLineNumber)",
+    "Command: $($_.InvocationInfo.Line)",
+    "Error: $($_.Exception.Message)"
+  ) -join [Environment]::NewLine
+  try { [System.IO.File]::WriteAllText($DiagnosticLog, $details, [System.Text.UTF8Encoding]::new($false)) } catch { }
+  throw
+}
 $CredentialTarget = 'WutheringWavesDuel.DeepSeek.ApiKey'
 $StateRoot = Join-Path $env:LOCALAPPDATA 'WutheringWavesDuel'
 $pathBytes = [System.Text.Encoding]::UTF8.GetBytes($ProjectRoot.ToLowerInvariant())
@@ -218,15 +230,20 @@ function Get-AvailableGamePort {
 
 $gamePort = Get-AvailableGamePort
 $nodePath = Get-NodeExecutable
-$startInfo = New-Object System.Diagnostics.ProcessStartInfo
-$startInfo.FileName = $nodePath
-$startInfo.Arguments = '"' + (Join-Path $ProjectRoot 'server.js') + '"'
-$startInfo.WorkingDirectory = $ProjectRoot
-$startInfo.UseShellExecute = $false
-$startInfo.CreateNoWindow = $true
-$startInfo.EnvironmentVariables['GAME_PORT'] = [string]$gamePort
-if (-not [string]::IsNullOrWhiteSpace($apiKey)) { $startInfo.EnvironmentVariables['DEEPSEEK_API_KEY'] = $apiKey } else { $startInfo.EnvironmentVariables.Remove('DEEPSEEK_API_KEY') }
-[System.Diagnostics.Process]::Start($startInfo) | Out-Null
+$hadGamePort = Test-Path Env:GAME_PORT
+$previousGamePort = $env:GAME_PORT
+$hadApiKey = Test-Path Env:DEEPSEEK_API_KEY
+$previousApiKey = $env:DEEPSEEK_API_KEY
+try {
+  # Windows PowerShell 5.1 can expose a null ProcessStartInfo.EnvironmentVariables collection.
+  # Start-Process inherits this short-lived process environment reliably on both Windows PowerShell and PowerShell 7.
+  $env:GAME_PORT = [string]$gamePort
+  if (-not [string]::IsNullOrWhiteSpace($apiKey)) { $env:DEEPSEEK_API_KEY = $apiKey } else { Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue }
+  Start-Process -FilePath $nodePath -ArgumentList ('"' + (Join-Path $ProjectRoot 'server.js') + '"') -WorkingDirectory $ProjectRoot -WindowStyle Hidden | Out-Null
+} finally {
+  if ($hadGamePort) { $env:GAME_PORT = $previousGamePort } else { Remove-Item Env:GAME_PORT -ErrorAction SilentlyContinue }
+  if ($hadApiKey) { $env:DEEPSEEK_API_KEY = $previousApiKey } else { Remove-Item Env:DEEPSEEK_API_KEY -ErrorAction SilentlyContinue }
+}
 Start-Sleep -Milliseconds 900
 try {
   $health = Invoke-WebRequest -Uri "http://127.0.0.1:$gamePort/api/status" -UseBasicParsing -TimeoutSec 4

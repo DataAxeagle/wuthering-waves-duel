@@ -5,20 +5,17 @@ set "LAUNCHER=%GAME_ROOT%app\launcher.ps1"
 if not exist "%LAUNCHER%" set "LAUNCHER=%GAME_ROOT%launcher.ps1"
 if not exist "%LAUNCHER%" (
   echo.
-  echo [START FAILED] Missing app\launcher.ps1.
+  echo [CONFIG FAILED] Missing app\launcher.ps1.
   echo Extract the complete ZIP to a normal folder and try again.
   echo.
   pause
   exit /b 2
 )
-set "EXTRA_ARGS="
-if defined WAVES_DUEL_NO_BROWSER set "EXTRA_ARGS=-NoBrowser -SkipAiSetup"
-if defined WAVES_DUEL_DEBUG echo LAUNCHER=%LAUNCHER% ^| ARGS=%EXTRA_ARGS%
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LAUNCHER%" %EXTRA_ARGS%
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LAUNCHER%" -ConfigureAI
 set "EXIT_CODE=%ERRORLEVEL%"
 if not "%EXIT_CODE%"=="0" (
   echo.
-  echo [START FAILED] Exit code %EXIT_CODE%. The detailed error is shown above.
+  echo [CONFIG FAILED] Exit code %EXIT_CODE%. The detailed error is shown above.
   echo Take a screenshot of this window if you need support.
   echo.
   pause

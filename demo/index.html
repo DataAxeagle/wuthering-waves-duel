@@ -149,7 +149,8 @@
           <button class="menu-entry" data-menu-page="load" type="button"><b>02</b><span>加载游戏</span></button>
           <button class="menu-entry" data-menu-page="settings" type="button"><b>03</b><span>设置</span></button>
           <button class="menu-entry" data-menu-page="stats" type="button"><b>04</b><span>数据统计</span></button>
-          <button id="exitGameButton" class="menu-entry danger" type="button"><b>05</b><span>退出游戏</span></button>
+          <button class="menu-entry" data-menu-page="test-lab" type="button"><b>05</b><span>卡牌测试场</span></button>
+          <button id="exitGameButton" class="menu-entry danger" type="button"><b>06</b><span>退出游戏</span></button>
         </nav>
         <section class="menu-page" id="menuStartPanel">
           <p class="modal-lead">选择 AI 难度和预设卡组，然后开始新的本地对战。</p>
@@ -175,14 +176,24 @@
           <button id="deleteSaveButton" class="secondary-button wide" type="button" disabled>删除存档</button>
         </section>
         <section class="menu-page hidden" id="menuSettingsPanel">
-          <p class="modal-lead">输入新的 DeepSeek API Key 可在当前启动会话立即切换 AI。Key 不会写入浏览器或对局存档。</p>
+          <p class="modal-lead">请使用“启动游戏.cmd”打开游戏后再配置 DeepSeek API Key。Key 会保存至当前 Windows 用户凭据中，供后续更新版本继续使用。</p>
           <label class="preset-select">玩家名称<input id="playerNameSettingsInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
           <button id="savePlayerNameButton" class="secondary-button wide" type="button">保存玩家名称</button>
           <label class="preset-select">DeepSeek API Key<input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." /></label>
           <p id="apiConfigStatus" class="microcopy">正在读取当前 AI 状态…</p>
           <button id="saveApiButton" class="primary-button wide" type="button">应用此 API Key</button>
           <button id="useLocalAiButton" class="secondary-button wide" type="button">切换为本地 AI</button>
-          <small>若需要让 Key 在下次启动后继续生效，可双击文件夹内的“配置 AI.vbs”。</small>
+          <small>联网模式会将玩家名称、战绩和局内存档同步到当前 Windows 用户数据目录；更新分享包不会覆盖这些数据。</small>
+        </section>
+        <section class="menu-page hidden" id="menuTestLabPanel">
+          <p class="modal-lead">选择双方要测试的行动卡。系统会自动配置兼容领队、足够协奏费用和效果抽牌所需的测试牌库；测试不计入战绩，也不会覆盖存档。</p>
+          <section class="test-lab-panel">
+            <label class="preset-select">我方行动卡<select id="testPlayerCardSelect"></select></label>
+            <label class="preset-select">AI 行动卡<select id="testAiCardSelect"></select></label>
+            <div id="testLabPreview" class="test-lab-preview" aria-live="polite"></div>
+            <p id="testLabHint" class="microcopy">选择后可直接进入战场；我方手牌仅保留所选卡，AI 会用所选卡响应。</p>
+          </section>
+          <button id="startTestLabButton" class="primary-button wide" type="button">进入测试场</button>
         </section>
         <section class="menu-page hidden" id="menuStatsPanel">
           <p class="modal-lead">数据只保存在当前浏览器。</p>
@@ -203,7 +214,6 @@
       </div>
     </div>
   </div>
-  <div id="tutorialSpotlight" class="tutorial-spotlight hidden" aria-hidden="true"></div>
   <section id="tutorialHint" class="tutorial-hint hidden" aria-live="polite"></section>
   <section id="tutorialExplainOverlay" class="tutorial-explain hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialExplainTitle">
     <div class="tutorial-explain-card">
@@ -218,7 +228,7 @@
     <div class="modal api-onboarding-modal">
       <p class="eyebrow">DEEPSEEK OPTIONAL SETUP</p>
       <h2 id="apiOnboardingTitle">配置 DeepSeek AI</h2>
-      <p class="modal-lead">填写 API Key 后可选择中级或高级 AI；跳过则使用初级本地 AI。你的 Key 不会展示在游戏界面或存档中。</p>
+      <p class="modal-lead">填写 API Key 后可选择中级或高级 AI；跳过则使用初级本地 AI。Key 不会展示在游戏界面或对局存档中。</p>
       <label class="preset-select">DeepSeek API Key<input id="onboardingApiKeyInput" type="password" autocomplete="off" placeholder="sk-..." /></label>
       <div class="modal-choice-actions">
         <button id="onboardingSaveApiButton" class="primary-button" type="button">启用 DeepSeek</button>
@@ -233,8 +243,8 @@
       <h2 id="setupTitle">选择我方领队</h2>
       <p id="coinResult" class="modal-lead"></p><div id="initiativeChoices" class="initiative-choices"><button id="chooseFirstButton" class="secondary-button" type="button">选择先手</button><button id="chooseSecondButton" class="secondary-button" type="button">选择后手</button></div>
       <p class="modal-lead">双方角色牌仍为盖放状态。你可以查看自己的三名角色，选择领队后双方同时翻开。</p>
-      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：点击可在右侧预览效果；需要换牌时先点击下方按钮</p><div class="setup-mulligan-layout"><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div><aside id="setupMulliganPreview" class="setup-mulligan-preview"><span class="empty-glyph">◇</span><p>点击上方手牌预览效果</p></aside></div>
-      <button id="mulliganButton" class="secondary-button wide" type="button">需要换牌</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
+      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：可标记任意张换掉</p><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div>
+      <button id="mulliganButton" class="secondary-button wide" type="button">确认换牌（可不换）</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
     </div>
   </div>
 

@@ -9,12 +9,14 @@ const { spawnSync } = require("node:child_process");
 const HOST = process.env.GAME_HOST || "127.0.0.1";
 const PORT = Number(process.env.GAME_PORT || 4173);
 const DEMO_ROOT = path.resolve(__dirname, "demo");
+const PACKAGE_ROOT = path.basename(__dirname).toLowerCase() === "app" ? path.dirname(__dirname) : __dirname;
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-v4-flash";
 const API_URL = new URL("https://api.deepseek.com/chat/completions");
-const MAX_BODY = 96 * 1024;
+const MAX_BODY = 512 * 1024;
 const AI_STATE_DIRECTORY = path.join(process.env.LOCALAPPDATA || process.env.APPDATA || path.join(__dirname, ".local"), "WutheringWavesDuel");
 const AI_KEY_FILE = path.join(AI_STATE_DIRECTORY, "deepseek-key.dat");
-const AI_AUDIT_DIRECTORY = path.join(__dirname, "AI决策记录");
+const PLAYER_PROFILE_FILE = path.join(AI_STATE_DIRECTORY, "player-profile.json");
+const DECISION_LOG_DIRECTORY = path.join(PACKAGE_ROOT, "AI决策记录");
 
 function powershell(script, input) {
   const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
@@ -43,6 +45,57 @@ function saveApiKey(value) {
 }
 
 let apiKey = process.env.DEEPSEEK_API_KEY || loadSavedApiKey();
+
+function readPlayerProfile() {
+  try {
+    if (!fs.existsSync(PLAYER_PROFILE_FILE)) return null;
+    const profile = JSON.parse(fs.readFileSync(PLAYER_PROFILE_FILE, "utf8"));
+    return profile && typeof profile === "object" ? profile : null;
+  } catch { return null; }
+}
+
+function savePlayerProfile(profile) {
+  if (!profile || typeof profile !== "object") return false;
+  try {
+    fs.mkdirSync(AI_STATE_DIRECTORY, { recursive: true });
+    const tempPath = `${PLAYER_PROFILE_FILE}.tmp`;
+    fs.writeFileSync(tempPath, JSON.stringify({ ...profile, updatedAt: new Date().toISOString() }), "utf8");
+    fs.renameSync(tempPath, PLAYER_PROFILE_FILE);
+    return true;
+  } catch { return false; }
+}
+
+function appendDecisionLog(payload) {
+  const matchId = String(payload.matchId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  if (!matchId) return false;
+  try {
+    fs.mkdirSync(DECISION_LOG_DIRECTORY, { recursive: true });
+    const filePath = path.join(DECISION_LOG_DIRECTORY, `${matchId}.md`);
+    const timestamp = new Date().toLocaleString("zh-CN", { hour12: false });
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, `# AI 决策记录\n\n- 对局：${matchId}\n- 首次记录：${timestamp}\n\n`, "utf8");
+    }
+    const section = [
+      `## ${timestamp} · ${String(payload.mode || "unknown")}`,
+      "",
+      `- 难度：${String(payload.difficulty || "novice")}`,
+      `- 来源：${String(payload.source || "DeepSeek")}`,
+      "",
+      "### AI 选择",
+      "```json",
+      JSON.stringify(payload.decision || null, null, 2),
+      "```",
+      "",
+      "### 公开局面与合法选项",
+      "```json",
+      JSON.stringify({ state: payload.state || null, legal: payload.legal || null }, null, 2),
+      "```",
+      "",
+    ].join("\n");
+    fs.appendFileSync(filePath, section, "utf8");
+    return true;
+  } catch { return false; }
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -96,68 +149,12 @@ function difficultyPrompt(difficulty) {
   }[difficulty] || "难度：初级。只做基础合法选择。";
 }
 
-function auditPayload(payload) {
-  return {
-    mode: payload?.mode || "unknown",
-    difficulty: payload?.difficulty || "unknown",
-    state: payload?.state || {},
-    legal: payload?.legal || {},
-  };
-}
-
-function markdownJson(value) {
-  return `\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
-}
-
-function writeAiAudit({ source, payload, decision, model, status = "成功", error = "" }) {
-  try {
-    const now = new Date();
-    const date = now.toISOString().slice(0, 10);
-    const clock = now.toISOString().replace(/[.:]/g, "-").replace("T", "_").slice(0, 23);
-    const safePayload = auditPayload(payload);
-    const folder = path.join(AI_AUDIT_DIRECTORY, date);
-    fs.mkdirSync(folder, { recursive: true });
-    const fileName = `${clock}_${safePayload.mode}.md`;
-    const filePath = path.join(folder, fileName);
-    const reason = typeof decision?.reason === "string" && decision.reason.trim()
-      ? decision.reason.trim()
-      : "未提供额外依据。";
-    const content = [
-      "# AI 决策审计",
-      "",
-      `- 时间：${now.toLocaleString("zh-CN", { hour12: false })}`,
-      `- 来源：${source}`,
-      `- 模型：${model || "本地规则 AI"}`,
-      `- 模式：${safePayload.mode}`,
-      `- 状态：${status}`,
-      "- 隐私边界：仅记录 AI 自己的手牌与双方明牌信息；不记录玩家隐藏手牌、盖放牌或 API Key。",
-      "",
-      "## 可见局面与合法操作",
-      markdownJson(safePayload),
-      "",
-      "## 简短决策依据",
-      reason,
-      "",
-      "## 最终决定",
-      markdownJson(decision || { result: "未形成有效决定" }),
-      error ? `\n## 失败原因\n${error}` : "",
-      "",
-      "> 此记录是面向玩家的决策依据摘要，不包含模型隐藏推理过程。",
-      "",
-    ].join("\n");
-    fs.writeFileSync(filePath, content, "utf8");
-    return path.relative(__dirname, filePath);
-  } catch {
-    return "";
-  }
-}
-
 function systemPrompt(mode, difficulty) {
   return `你是一个严格遵守规则的卡牌游戏 AI。你只能从用户提供的合法选项中选择，不能虚构卡牌、费用或动作。
 规则摘要：主角牌没有攻击力或防御力，只有领队被动；主要阶段中充能、升级、更换领队各最多一次且可跳过；升级可以选择领队或后台角色；充能区每张牌提供 1 点一次性费用，支付后进入弃牌区且下回合不恢复。战斗阶段时双方先盖一张符合当前费用的牌，任何一方都不能根据费用猜测对方的盖牌；只有双方同时翻开时才一起扣费。红色攻击克绿色攻击，绿色攻击克蓝色躲避，蓝色躲避克红色攻击；同色红色或绿色行动卡比较速度；速度相同由回合方获胜；完全相同的卡牌互相抵消。对抗胜利时按胜利行动卡的伤害值造成伤害，蓝色卡战胜红色卡时同样按蓝色卡伤害造成伤害；蓝蓝双方各自触发效果且无伤害，遭克制的蓝色牌不触发效果。只有红色行动卡胜利后可在费用足够时无限连击红色行动卡；绿色行动卡只有在卡牌文本明确授予追击次数时才能进行对应次数的有限连击。对手盖牌内容是隐藏信息，不得假设自己知道。
 当前决策模式：${mode}。
 ${difficultyPrompt(difficulty)}
-必须只输出 JSON 对象，不要输出 markdown。reason 必须用一两句概括你依据本次收到的可见局面、规则和合法动作作出的选择；不得声称看到了隐藏手牌或盖放牌，也不得输出隐藏推理过程。turn_plan 格式：{"chargeUid":string|null,"upgrade":{"heroIndex":number,"discardUid":string}|null,"switchHeroIndex":number|null,"contestUid":string|null,"endTurn":boolean,"reason":string}。contest_response 格式：{"responseUid":string|null,"reason":string}。pursuit 格式：{"pursuitUid":string|null,"reason":string}，null 表示停止追击。`;
+必须只输出 JSON 对象，不要输出 markdown。turn_plan 格式：{"chargeUid":string|null,"upgrade":{"heroIndex":number,"discardUid":string}|null,"switchHeroIndex":number|null,"contestUid":string|null,"endTurn":boolean,"reason":string}。contest_response 格式：{"responseUid":string|null,"reason":string}。pursuit 格式：{"pursuitUid":string|null,"reason":string}，null 表示停止追击。`;
 }
 
 function callDeepSeek(payload) {
@@ -198,10 +195,7 @@ function callDeepSeek(payload) {
           const parsed = JSON.parse(raw);
           const content = parsed.choices?.[0]?.message?.content;
           if (!content) throw new Error("empty_content");
-          const decision = JSON.parse(content);
-          const model = parsed.model || MODEL;
-          const auditFile = writeAiAudit({ source: "DeepSeek", payload, decision, model });
-          resolve({ decision, model, auditFile });
+          resolve({ decision: JSON.parse(content), model: parsed.model || MODEL });
         } catch (error) {
           reject(new Error(`deepseek_invalid_response:${error.message}`));
         }
@@ -241,6 +235,26 @@ function createServer() {
       sendJson(response, 200, { configured: Boolean(apiKey), model: MODEL });
       return;
     }
+    if (request.method === "GET" && request.url === "/api/player-data") {
+      sendJson(response, 200, { profile: readPlayerProfile(), persistence: "windows-user-data" });
+      return;
+    }
+    if (request.method === "POST" && request.url === "/api/player-data") {
+      try {
+        const payload = await readJson(request);
+        if (!savePlayerProfile(payload.profile)) { sendJson(response, 400, { error: "invalid_player_profile" }); return; }
+        sendJson(response, 200, { saved: true, persistence: "windows-user-data" });
+      } catch (error) { sendJson(response, 400, { error: error.message || "invalid_request" }); }
+      return;
+    }
+    if (request.method === "POST" && request.url === "/api/ai-decision-log") {
+      try {
+        const payload = await readJson(request);
+        if (!appendDecisionLog(payload)) { sendJson(response, 400, { error: "decision_log_failed" }); return; }
+        sendJson(response, 200, { saved: true, directory: "AI决策记录" });
+      } catch (error) { sendJson(response, 400, { error: error.message || "invalid_request" }); }
+      return;
+    }
 if (request.method === "POST" && request.url === "/api/configure-ai") {
       try {
         const payload = await readJson(request);
@@ -251,27 +265,13 @@ if (request.method === "POST" && request.url === "/api/configure-ai") {
         sendJson(response, 200, { configured: Boolean(apiKey), model: MODEL, persistence: "windows-user-encrypted" });
       } catch (error) { sendJson(response, 400, { error: error.message || "invalid_request" }); }
       return;
-    }    if (request.method === "POST" && request.url === "/api/ai-audit") {
-      try {
-        const payload = await readJson(request);
-        if (!["turn_plan", "contest_response", "pursuit"].includes(payload.mode)) {
-          sendJson(response, 400, { error: "invalid_mode" });
-          return;
-        }
-        const auditFile = writeAiAudit({ source: payload.source === "DeepSeek" ? "DeepSeek" : "本地规则 AI", payload, decision: payload.decision, model: payload.model || "" });
-        sendJson(response, 200, { ok: Boolean(auditFile), auditFile });
-      } catch (error) {
-        sendJson(response, 400, { error: error.message || "invalid_request" });
-      }
-      return;
     }    if (request.method === "POST" && request.url === "/api/ai-move") {
       if (!apiKey) {
         sendJson(response, 503, { error: "deepseek_not_configured" });
         return;
       }
-      let payload = null;
       try {
-        payload = await readJson(request);
+        const payload = await readJson(request);
         if (!["turn_plan", "contest_response", "pursuit"].includes(payload.mode)) {
           sendJson(response, 400, { error: "invalid_mode" });
           return;
@@ -279,7 +279,6 @@ if (request.method === "POST" && request.url === "/api/configure-ai") {
         const result = await callDeepSeek(payload);
         sendJson(response, 200, result);
       } catch (error) {
-        if (payload) writeAiAudit({ source: "DeepSeek", payload, decision: null, model: MODEL, status: "失败", error: String(error.message || "deepseek_failed").slice(0, 160) });
         sendJson(response, 502, { error: error.message || "deepseek_failed" });
       }
       return;

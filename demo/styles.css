@@ -14,11 +14,12 @@
   --gale: #82ddae;
   --tide: #74b9ee;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
+  --hand-dock-height: clamp(156px, 23dvh, 218px);
 }
 
 * { box-sizing: border-box; }
 
-html, body { min-height: 100%; }
+html, body { min-height: 100%; min-height: 100dvh; }
 
 body {
   margin: 0;
@@ -27,7 +28,7 @@ body {
   background:
     radial-gradient(circle at 50% 20%, rgba(67, 145, 131, 0.17), transparent 33%),
     linear-gradient(135deg, #050a0b 0%, #081719 48%, #050b0c 100%);
-  overflow: hidden;
+  overflow: auto;
 }
 
 body::before {
@@ -46,8 +47,8 @@ body::before {
 button { font: inherit; }
 button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2px solid var(--mint-strong); outline-offset: 3px; }
 
-.app-shell { height: 100vh; min-height: 720px; display: flex; flex-direction: column; overflow: hidden; }
-.topbar { height: 76px; display: flex; align-items: center; justify-content: space-between; padding: 0 28px; border-bottom: 1px solid var(--line); background: rgba(3, 11, 12, 0.76); backdrop-filter: blur(18px); position: relative; z-index: 10; }
+.app-shell { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { flex: 0 0 clamp(58px, 8dvh, 76px); height: clamp(58px, 8dvh, 76px); display: flex; align-items: center; justify-content: space-between; padding: 0 clamp(14px, 2vw, 28px); border-bottom: 1px solid var(--line); background: rgba(3, 11, 12, 0.76); backdrop-filter: blur(18px); position: relative; z-index: 10; }
 .brand { display: flex; align-items: center; gap: 14px; }
 .brand-mark { width: 42px; height: 42px; display: grid; place-items: center; border: 1px solid var(--line-bright); color: var(--mint); font-size: 26px; transform: rotate(45deg); }
 .brand-mark::first-letter { transform: rotate(-45deg); }
@@ -85,7 +86,7 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .log-entry.turn, .log-entry.charge { border-color: var(--mint); }
 @keyframes logIn { from { transform: translateX(-5px); opacity: 0; } }
 
-.battlefield { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: minmax(190px, 1fr) 132px minmax(190px, 1fr); padding: 10px 28px; overflow: hidden; }
+.battlefield { min-width: 0; min-height: 0; position: relative; display: grid; grid-template-rows: minmax(0, 1fr) clamp(88px, 16dvh, 132px) minmax(0, 1fr); padding: clamp(4px, 1dvh, 10px) clamp(12px, 2vw, 28px); overflow: hidden; }
 .battlefield::before { content: ""; position: absolute; inset: 8% 10%; border: 1px solid rgba(123, 225, 204, .08); transform: perspective(900px) rotateX(58deg); box-shadow: inset 0 0 100px rgba(58, 159, 138, .04); }
 .player-zone { position: relative; z-index: 2; display: grid; grid-template-columns: 190px 1fr 145px; gap: 18px; align-items: center; }
 .opponent-zone, .opponent-zone > * { transform: none; }
@@ -107,14 +108,14 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .charge-card img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
 .charge-empty { color: #54706b; font-size: 9px; }
 
-.hero-line { display: flex; justify-content: center; gap: 12px; }
-.hero-card { position: relative; width: 138px; height: 170px; padding: 0; border: 1px solid var(--line); background: #102124; color: var(--text); cursor: pointer; overflow: hidden; transition: .22s ease; clip-path: polygon(0 8%, 8% 0, 100% 0, 100% 92%, 92% 100%, 0 100%); }
+.hero-line { display: flex; justify-content: center; gap: clamp(5px, 1vw, 12px); }
+.hero-card { position: relative; width: clamp(92px, 10vw, 138px); height: clamp(122px, 18dvh, 170px); padding: 0; border: 1px solid var(--line); background: #102124; color: var(--text); cursor: pointer; overflow: hidden; transition: .22s ease; clip-path: polygon(0 8%, 8% 0, 100% 0, 100% 92%, 92% 100%, 0 100%); }
 .hero-card:hover { transform: translateY(-3px); border-color: var(--line-bright); }
-.hero-card.active { width: 154px; height: 184px; border-color: var(--mint); box-shadow: 0 0 32px rgba(102, 219, 190, .18); }
+.hero-card.active { width: clamp(102px, 11vw, 154px); height: clamp(132px, 19dvh, 184px); border-color: var(--mint); box-shadow: 0 0 32px rgba(102, 219, 190, .18); }
 .hero-card.selected { outline: 2px solid var(--gold); outline-offset: 3px; }
-.hero-art { height: 103px; display: grid; place-items: center; font: 300 50px/1 serif; color: rgba(255,255,255,.88); background-image: linear-gradient(to bottom, transparent 58%, rgba(4,13,14,.72)), var(--hero-art); background-size: 100% 100%, cover; background-position: center, center 28%; background-repeat: no-repeat; }
+.hero-art { height: clamp(70px, 11dvh, 103px); display: grid; place-items: center; font: 300 50px/1 serif; color: rgba(255,255,255,.88); background-image: linear-gradient(to bottom, transparent 58%, rgba(4,13,14,.72)), var(--hero-art); background-size: 100% 100%, cover; background-position: center, center 28%; background-repeat: no-repeat; }
 .hero-glyph { display: none; }
-.hero-card.active .hero-art { height: 112px; }
+.hero-card.active .hero-art { height: clamp(78px, 12dvh, 112px); }
 .hero-level { position: absolute; top: 7px; left: 8px; font: 700 12px Consolas, monospace; color: white; }
 .active-label { position: absolute; top: 8px; right: 8px; color: var(--mint); font: 700 9px Consolas, monospace; letter-spacing: .1em; }
 .hero-info { padding: 8px 10px; text-align: left; }
@@ -185,18 +186,18 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .secondary-button { min-height: 40px; }
 .wide { width: 100%; }
 
-.hand-dock { position: relative; z-index: 5; flex: 0 0 218px; height: 218px; min-height: 0; padding: 10px 28px 12px; border-top: 1px solid var(--line); background: rgba(3, 12, 13, .92); box-shadow: 0 -18px 60px rgba(0,0,0,.25); overflow: hidden; }
+.hand-dock { position: relative; z-index: 5; flex: 0 0 var(--hand-dock-height); height: var(--hand-dock-height); min-height: 0; padding: 10px clamp(12px, 2vw, 28px) 12px; border-top: 1px solid var(--line); background: rgba(3, 12, 13, .92); box-shadow: 0 -18px 60px rgba(0,0,0,.25); overflow: hidden; }
 .hand-meta { display: flex; justify-content: space-between; align-items: end; margin-bottom: 10px; }
 .hand-meta strong { color: var(--mint); font: 500 16px Consolas, monospace; }
 .hint { color: #607d78; font-size: 10px; }
-.hand { display: flex; align-items: end; justify-content: center; height: 174px; padding-top: 8px; overflow-x: auto; overflow-y: hidden; }
-.card { --tone-color: var(--mint); position: relative; flex: 0 0 126px; height: 168px; margin-left: -14px; border: 1px solid color-mix(in srgb, var(--tone-color) 52%, #38504c); color: var(--text); background: linear-gradient(155deg, #173034, #0b191b 62%); padding: 0; cursor: pointer; text-align: left; overflow: hidden; box-shadow: -8px 10px 20px rgba(0,0,0,.28); transition: .2s cubic-bezier(.2,.8,.2,1); clip-path: polygon(0 7%, 9% 0, 100% 0, 100% 93%, 91% 100%, 0 100%); }
+.hand { display: flex; align-items: end; justify-content: center; height: calc(var(--hand-dock-height) - 44px); padding-top: 8px; overflow-x: auto; overflow-y: hidden; }
+.card { --tone-color: var(--mint); position: relative; flex: 0 0 clamp(92px, 9vw, 126px); height: clamp(124px, 16dvh, 168px); margin-left: clamp(-14px, -1vw, -7px); border: 1px solid color-mix(in srgb, var(--tone-color) 52%, #38504c); color: var(--text); background: linear-gradient(155deg, #173034, #0b191b 62%); padding: 0; cursor: pointer; text-align: left; overflow: hidden; box-shadow: -8px 10px 20px rgba(0,0,0,.28); transition: .2s cubic-bezier(.2,.8,.2,1); clip-path: polygon(0 7%, 9% 0, 100% 0, 100% 93%, 91% 100%, 0 100%); }
 .card:first-child { margin-left: 0; }
 .card:hover, .card.selected { transform: translateY(-18px) scale(1.035); z-index: 8; border-color: var(--tone-color); box-shadow: 0 15px 32px rgba(0,0,0,.46), 0 0 20px color-mix(in srgb, var(--tone-color) 18%, transparent); }
 .card.selected { outline: 2px solid var(--gold); outline-offset: 2px; }
 .card.unaffordable { filter: saturate(.45) brightness(.65); }
 .card-cost { position: absolute; top: 6px; left: 8px; z-index: 2; font: 800 20px/1 Consolas, monospace; color: white; text-shadow: 0 2px 6px black; }
-.card-art { height: 82px; display: grid; place-items: center; font: 300 36px/1 serif; color: color-mix(in srgb, var(--tone-color) 75%, white); background: radial-gradient(circle, color-mix(in srgb, var(--tone-color) 28%, transparent), transparent 62%), repeating-linear-gradient(125deg, rgba(255,255,255,.025) 0 2px, transparent 2px 9px); border-bottom: 1px solid color-mix(in srgb, var(--tone-color) 30%, transparent); }
+.card-art { height: clamp(62px, 8dvh, 82px); display: grid; place-items: center; font: 300 36px/1 serif; color: color-mix(in srgb, var(--tone-color) 75%, white); background: radial-gradient(circle, color-mix(in srgb, var(--tone-color) 28%, transparent), transparent 62%), repeating-linear-gradient(125deg, rgba(255,255,255,.025) 0 2px, transparent 2px 9px); border-bottom: 1px solid color-mix(in srgb, var(--tone-color) 30%, transparent); }
 .card.character-card .card-art { color: transparent; background-image: linear-gradient(to bottom, transparent 60%, rgba(5,14,16,.78)), var(--hero-art); background-size: 100% 100%, cover; background-position: center, center 28%; background-repeat: no-repeat; }
 .card.illustrated-card .card-art { color: transparent; background-image: linear-gradient(to bottom, transparent 55%, rgba(5,14,16,.74)), var(--action-art); background-size: 100% 100%, cover; background-position: center, center 38%; background-repeat: no-repeat; }
 .hero-card.facedown-card { display: grid; place-items: center; align-content: center; gap: 8px; cursor: default; background: repeating-linear-gradient(135deg, #0b1b1d 0 8px, #132a2d 8px 16px); border-color: #315a55; }
@@ -220,8 +221,6 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .tutorial-hint.hidden, .tutorial-explain.hidden { display: none; }
 .tutorial-hint b { color: #78d9ff; }
 .tutorial-explain { position: fixed; z-index: 121; left: 50%; top: 50%; width: min(500px, calc(100vw - 42px)); transform: translate(-50%, -50%); padding: 22px; border: 1px solid #65d6ff; background: linear-gradient(145deg, rgba(7, 35, 47, .98), rgba(4, 14, 18, .99)); box-shadow: 0 20px 58px rgba(0, 0, 0, .65), 0 0 38px rgba(75, 184, 255, .25); text-align: center; }
-/* 总结弹窗的无形遮罩接收所有框外点击，确保总结期间无法继续操作游戏。 */
-.tutorial-explain::before { content: ""; position: fixed; inset: 0; z-index: -1; background: rgba(1, 7, 11, .58); }
 .tutorial-explain h2 { margin: 5px 0 11px; }
 .tutorial-explain p:not(.eyebrow) { margin: 0; color: #d7ecf2; font-size: 13px; line-height: 1.7; }
 .tutorial-explain .tutorial-next { margin: 13px 0; padding: 9px; border: 1px solid rgba(95, 204, 255, .25); background: rgba(75, 184, 255, .09); color: #82dcff; }
@@ -233,16 +232,6 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .setup-modal { width: min(760px, 96vw); text-align: center; }
 .setup-heroes { display: flex; justify-content: center; align-items: end; gap: 18px; margin: 24px 0; }
 .setup-heroes .hero-card { margin: 0; }
-.setup-mulligan-layout { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 14px; align-items: stretch; }
-.setup-mulligan-layout .setup-mulligan-cards { min-width: 0; }
-.setup-mulligan-preview { min-height: 122px; border: 1px solid rgba(119,226,199,.28); border-radius: 12px; background: rgba(5,14,16,.72); padding: 13px; color: #c6e5df; }
-.setup-mulligan-preview .empty-glyph { display: block; color: var(--mint); font-size: 28px; text-align: center; margin: 18px 0 6px; }
-.setup-mulligan-preview p { margin: 5px 0; color: #7fa29b; font-size: 12px; text-align: center; }
-.setup-mulligan-preview h3 { margin: 4px 0 7px; color: #f3fbf9; font-size: 18px; }
-.setup-mulligan-preview .description { margin: 8px 0 0; color: #b5d1ca; font-size: 12px; line-height: 1.55; }
-.private-hand-card { cursor: pointer; min-width: 112px; background: repeating-linear-gradient(135deg, #0b1b1d 0 8px, #132a2d 8px 16px); border-color: #315a55; }
-.private-hand-card.revealed-effect-card { cursor: default; background: #071417; }
-@media (max-width: 760px) { .setup-mulligan-layout { grid-template-columns: 1fr; } .setup-mulligan-preview { min-height: 96px; } }
 .response-cards { display: flex; justify-content: center; gap: 14px; overflow-x: auto; min-height: 188px; padding: 18px 6px 24px; }
 .response-cards .card { margin-left: 0; }
 .rules-modal { width: min(860px, 96vw); }
@@ -335,11 +324,17 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 @keyframes damageFlash { to { opacity: 0; } }
 @keyframes damageNumber { from { transform: translate(-50%, 18px) scale(.7); opacity: 0; } 35% { opacity: 1; } to { transform: translate(-50%, -55px) scale(1.12); opacity: 0; } }
 
-#responseOverlay { place-items: end end; padding: 0 22px 225px 0; background: transparent; backdrop-filter: none; pointer-events: none; }
-#responseOverlay .combat-modal { width: min(430px, 40vw); padding: 14px 16px; background: rgba(7,24,26,.97); pointer-events: auto; }
+#responseOverlay { place-items: end end; padding: 0 clamp(12px, 2vw, 22px) calc(var(--hand-dock-height) + 12px) 0; background: transparent; backdrop-filter: none; pointer-events: none; }
+#responseOverlay .combat-modal { width: min(430px, 40vw); max-height: min(68dvh, 560px); display: flex; flex-direction: column; padding: 14px 16px; background: rgba(7,24,26,.97); pointer-events: auto; }
 #responseOverlay .combat-modal h2 { margin-top: 4px; font-size: 19px; }
 #responseOverlay .modal-lead { margin: 5px 0; font-size: 11px; }
-#responseOverlay .response-cards { justify-content: flex-start; min-height: 145px; padding: 8px 4px 8px; }
+#responseOverlay .response-cards { flex: 1 1 auto; justify-content: flex-start; min-height: 0; max-height: min(280px, 36dvh); padding: 8px 4px 8px; overflow: auto; }
+#responseOverlay .modal-choice-actions { position: sticky; bottom: 0; z-index: 2; margin: 0; padding-top: 10px; background: linear-gradient(to bottom, rgba(7,24,26,0), rgba(7,24,26,.98) 22%); }
+#responseOverlay[data-utility-mode="view-hand"] { place-items: center; padding: 24px; }
+#responseOverlay[data-utility-mode="view-hand"] .combat-modal { width: min(760px, 92vw); height: auto; max-height: calc(100dvh - 48px); overflow: hidden; }
+#responseOverlay[data-utility-mode="view-hand"] .response-cards { flex: 0 1 auto; justify-content: center; align-items: flex-start; min-height: 0; max-height: min(48dvh, 390px); }
+#responseOverlay[data-utility-mode="view-hand"] .modal-choice-actions { position: relative; flex: 0 0 auto; min-height: 0; margin: 0; padding: 10px 0 2px; background: transparent; }
+#responseOverlay[data-utility-mode="view-hand"] #confirmChoiceButton:not([hidden]) { display: block; grid-column: 1 / -1; min-height: 46px; font-size: 14px; }
 
 @media (max-width: 1180px) {
   .game-layout { grid-template-columns: 210px minmax(590px, 1fr) 220px; }
@@ -424,6 +419,17 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .preset-panel small { color: var(--muted); line-height: 1.55; }
 .preset-select { display: grid; gap: 7px; color: var(--gold); font-size: 12px; }
 .preset-select select { width: 100%; padding: 10px; border: 1px solid rgba(144,214,203,.32); color: var(--text); background: rgba(4,18,28,.88); font: inherit; }
+.test-lab-panel { display: grid; gap: 12px; margin: 18px 0; padding: 15px; border: 1px solid rgba(217,182,111,.3); background: linear-gradient(135deg, rgba(41,29,15,.42), rgba(7,23,28,.72)); }
+.test-lab-panel .microcopy { padding: 10px; border-left: 2px solid var(--gold); background: rgba(0,0,0,.16); }
+.test-lab-preview { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.test-lab-preview > strong { align-self: center; color: var(--gold); font: 800 18px Consolas, monospace; }
+.test-card-preview { display: grid; grid-template-rows: auto 116px auto auto 1fr; gap: 6px; min-width: 0; padding: 9px; border: 1px solid var(--tone-color); background: rgba(3,14,19,.78); box-shadow: inset 0 0 24px color-mix(in srgb, var(--tone-color) 9%, transparent); }
+.test-card-preview p { margin: 0; color: var(--tone-color); font: 700 9px Consolas, monospace; letter-spacing: .12em; }
+.test-card-preview b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.test-card-preview small { color: var(--gold); font: 700 10px Consolas, monospace; }
+.test-card-preview span { color: #b8cbc7; font-size: 10px; line-height: 1.55; }
+.test-card-art { display: grid; place-items: center; overflow: hidden; border: 1px solid color-mix(in srgb, var(--tone-color) 55%, transparent); background: rgba(8,21,28,.92); color: var(--tone-color); font-size: 34px; }
+.test-card-art img { width: 100%; height: 100%; object-fit: cover; object-position: center; }
 @media (max-width: 620px) { .preset-panel { grid-template-columns: 1fr; } }
 /* 官方桌垫结构参考的原创雾海棋盘背景 */
 .battlefield { background-image: linear-gradient(90deg, rgba(4,10,19,.78), rgba(7,19,34,.27) 50%, rgba(4,10,19,.78)), url("assets/backgrounds/duel-board-original.png"); background-size: cover; background-position: center; border: 1px solid rgba(209,175,102,.34); box-shadow: inset 0 0 90px rgba(0,0,0,.58), 0 18px 52px rgba(0,0,0,.3); }
@@ -497,138 +503,76 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .primary-button b, .primary-button small, .secondary-button b, .secondary-button small { display: block; }
 .primary-button small, .secondary-button small { margin-top: 2px; color: inherit; font-size: 9px; font-weight: 600; opacity: .78; }
 
-/* 卡牌放大版：准备阶段不再压缩或叠放手牌，选中后也不会被容器裁切。 */
-@media (min-width: 1101px) {
-  .hand-dock { flex-basis: 272px; height: 272px; padding-top: 12px; }
-  .hand { height: 224px; padding-top: 24px; }
-  .card { flex-basis: 152px; height: 202px; margin-left: -16px; }
-  .card-art { height: 104px; }
-  .card-cost { font-size: 23px; }
-  .card-body { padding: 9px 11px; }
-  .card-body strong { font-size: 14px; }
-  .card-body small { font-size: 10px; }
-  .card-metrics { font-size: 11px; }
-  .hero-card.full-face-hero { width: 160px; height: 225px; }
-  .hero-card.full-face-hero.active { width: 174px; height: 244px; }
+/* 视口分档：浏览器缩放会缩小 CSS 逻辑宽度，不能再依赖固定三栏和硬性最小宽度。 */
+.game-layout { grid-template-columns: minmax(170px, .74fr) minmax(0, 2.45fr) minmax(205px, .88fr); }
+.battlefield { min-width: 0; }
+.player-zone { grid-template-columns: minmax(118px, .84fr) minmax(0, 1fr) minmax(82px, .58fr); }
+.arena-core { grid-template-columns: minmax(56px, .4fr) minmax(0, .72fr) minmax(190px, 1.55fr) minmax(0, .72fr) minmax(56px, .4fr); }
+
+@media (max-width: 1280px) {
+  .game-layout { grid-template-columns: minmax(150px, .68fr) minmax(0, 2.2fr) minmax(190px, .82fr); }
+  .side-panel, .action-panel { padding: 10px; }
+  .turn-card, .tone-guide, .battle-log, .selection-card, .action-stack { padding: 10px; margin-bottom: 8px; }
+  .hero-card.full-face-hero { width: 104px; height: 146px; }
+  .hero-card.full-face-hero.active { width: 114px; height: 160px; }
+  .arena-contest-stage { width: min(350px, calc(100% - 20px)); }
+  .combat-status { min-width: 0; padding-inline: 14px; }
+  .combat-status strong, .combat-status small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
-.setup-modal {
-  width: min(1120px, 96vw);
-  max-height: calc(100vh - 32px);
-  padding: 26px 34px 28px;
-}
-.setup-modal .modal-lead { margin: 9px 0; }
-.setup-heroes { margin: 16px 0; gap: 22px; }
-.setup-heroes .hero-card.full-face-hero { width: 160px; height: 225px; }
-.setup-mulligan-layout { grid-template-columns: minmax(0, 1fr) 320px; gap: 22px; }
-.setup-mulligan-preview { min-height: 198px; padding: 17px; }
-.setup-mulligan-preview h3 { font-size: 21px; }
-.setup-mulligan-preview .description { font-size: 14px; line-height: 1.65; }
-.setup-mulligan-cards {
-  min-height: 222px;
-  max-height: none;
-  margin: 8px 0 14px;
-  padding: 14px 6px 16px;
-  justify-content: flex-start;
-  align-items: end;
-  gap: 9px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-.setup-mulligan-cards .card.full-face-card {
-  flex: 0 0 128px;
-  height: 180px;
-  margin-left: 0;
-}
-.setup-mulligan-cards .card:hover,
-.setup-mulligan-cards .card.selected {
-  transform: scale(1.025);
+@media (max-width: 1050px) {
+  :root { --hand-dock-height: clamp(150px, 22dvh, 188px); }
+  .app-shell { height: auto; min-height: 100dvh; overflow: visible; }
+  .game-layout { flex: 0 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "battle" "actions"; overflow: visible; }
+  .side-panel { display: none; }
+  .battlefield { grid-area: battle; min-height: 500px; padding: 10px 14px; }
+  .action-panel { grid-area: actions; display: grid; grid-template-columns: minmax(160px, .8fr) minmax(0, 1.5fr) minmax(185px, .85fr); gap: 10px; padding: 10px 14px; border: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .selection-card, .action-stack { margin: 0; }
+  .action-stack { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .action-stack > .eyebrow { grid-column: 1 / -1; }
+  .action-button { min-width: 0; padding: 8px; }
+  .action-button small { display: none; }
+  .primary-actions { align-content: stretch; gap: 6px; }
+  .primary-actions button { min-height: 42px; }
+  .hand-dock { flex: 0 0 var(--hand-dock-height); height: var(--hand-dock-height); }
 }
 
-@media (max-width: 1100px) {
-  .setup-modal { width: min(900px, 96vw); }
-  .setup-heroes .hero-card.full-face-hero { width: 142px; height: 199px; }
-  .setup-mulligan-layout { grid-template-columns: minmax(0, 1fr) 278px; gap: 16px; }
-  .setup-mulligan-cards { min-height: 190px; }
-  .setup-mulligan-cards .card.full-face-card { flex-basis: 110px; height: 155px; }
+@media (max-width: 720px) {
+  .app-shell, .game-layout, .battlefield { min-width: 0; }
+  .topbar { height: auto; min-height: 58px; flex-wrap: wrap; gap: 8px; padding: 9px 12px; }
+  .brand-mark, .brand .eyebrow { display: none; }
+  .brand h1 { font-size: 18px; }
+  .top-actions { flex: 1 1 100%; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+  .top-actions .icon-btn { flex: 1 1 auto; min-width: 76px; padding: 7px 8px; font-size: 11px; }
+  .top-actions .badge { margin-right: auto; }
+  .battlefield { min-height: 430px; grid-template-rows: minmax(140px, 1fr) 82px minmax(140px, 1fr); padding-inline: 8px; }
+  .player-zone { grid-template-columns: minmax(0, 1fr); gap: 4px; align-content: center; }
+  .identity-panel { display: none; }
+  .shield-readout { display: none; }
+  .hero-line { gap: 5px; }
+  .hero-card.full-face-hero { width: 80px; height: 113px; }
+  .hero-card.full-face-hero.active { width: 86px; height: 121px; }
+  .resource-strip { grid-template-columns: 46px minmax(0, 1fr); }
+  .cost-readout { min-height: 52px; }
+  .cost-readout strong { font-size: 27px; }
+  .charge-cards { min-height: 38px; }
+  .arena-core { grid-template-columns: 38px minmax(0, .7fr) minmax(145px, 1.45fr) minmax(0, .7fr) 38px; gap: 3px; }
+  .deck-readout, .versus-line b { font-size: 7px; }
+  .combat-status { height: 70px; gap: 8px; padding: 0 8px; }
+  .status-glyph { font-size: 24px; }
+  .combat-status strong { font-size: 11px; }
+  .combat-status small { font-size: 8px; }
+  .arena-contest-stage { width: min(330px, calc(100vw - 22px)); }
+  .action-panel { grid-template-columns: minmax(0, 1fr); padding: 9px 10px; }
+  .selection-card { display: none; }
+  .primary-actions { grid-template-columns: 1fr 1fr; }
+  .primary-actions button { min-height: 40px; }
+  .hand-dock { --hand-dock-height: 154px; flex-basis: var(--hand-dock-height); height: var(--hand-dock-height); padding-inline: 10px; }
+  .hand { height: 112px; justify-content: flex-start; }
+  .card.full-face-card { flex-basis: 86px; height: 120px; }
+  .hint { display: none; }
 }
 
-@media (max-width: 760px) {
-  .setup-modal { padding: 18px 20px 22px; }
-  .setup-mulligan-layout { grid-template-columns: 1fr; }
-  .setup-heroes .hero-card.full-face-hero { width: 108px; height: 152px; }
-  .setup-mulligan-cards { min-height: 166px; }
-  .setup-mulligan-cards .card.full-face-card { flex-basis: 96px; height: 135px; }
-}
-
-/* 新手指引：蓝色聚焦框外的区域统一压暗，但不拦截被引导控件的点击。 */
-.tutorial-spotlight {
-  position: fixed;
-  z-index: 120;
-  display: block;
-  pointer-events: none;
-  border: 3px solid #4bb8ff;
-  border-radius: 10px;
-  background: rgba(75, 184, 255, .05);
-  box-shadow: 0 0 0 9999px rgba(1, 7, 11, .76), 0 0 0 2px rgba(189, 238, 255, .55), 0 0 28px rgba(75, 184, 255, .95);
-  transition: left .2s ease, top .2s ease, width .2s ease, height .2s ease;
-}
-.tutorial-spotlight.hidden { display: none; }
-.tutorial-hint { z-index: 122; border-color: #4bb8ff; box-shadow: 0 12px 32px rgba(0, 0, 0, .5), 0 0 22px rgba(75, 184, 255, .4); }
-.tutorial-explain { z-index: 123; }
-
-/* 宽屏利用额外空间继续放大实体卡面，卡牌自身的文字无需依赖右侧预览。 */
-@media (min-width: 1441px) {
-  .hand-dock { flex-basis: 314px; height: 314px; }
-  .hand { height: 260px; padding-top: 28px; }
-  .card { flex-basis: 172px; height: 229px; margin-left: -18px; }
-  .card-art { height: 118px; }
-  .card-cost { font-size: 26px; }
-  .card-body strong { font-size: 16px; }
-  .card-body small { font-size: 11px; }
-  .card-metrics { font-size: 12px; }
-  .hero-card.full-face-hero { width: 184px; height: 259px; }
-  .hero-card.full-face-hero.active { width: 198px; height: 279px; }
-  .setup-modal { width: min(1240px, 96vw); }
-  .setup-heroes .hero-card.full-face-hero { width: 178px; height: 251px; }
-  .setup-mulligan-layout { grid-template-columns: minmax(0, 1fr) 360px; gap: 26px; }
-  .setup-mulligan-preview { min-height: 222px; }
-  .setup-mulligan-cards { min-height: 248px; padding: 18px 8px 20px; gap: 10px; }
-  .setup-mulligan-cards .card.full-face-card { flex-basis: 144px; height: 202px; }
-}
-
-/* 小屏改为纵向可滚动工作区，避免固定高度和三栏布局互相遮挡。 */
-@media (max-width: 980px) {
-  html, body { min-height: 100%; overflow: auto; }
-  .app-shell { width: 100%; min-width: 0; height: auto; min-height: 100vh; overflow: visible; }
-  .topbar { min-width: 0; height: auto; min-height: 58px; padding: 10px 16px; }
-  .game-layout { grid-template-columns: minmax(0, 1fr); overflow: visible; }
-  .battlefield { order: 1; min-width: 0; min-height: 620px; padding: 12px; }
-  .side-panel { display: block; order: 2; border-right: 0; border-top: 1px solid var(--line); max-height: none; }
-  .action-panel { order: 3; border-left: 0; border-top: 1px solid var(--line); max-height: none; }
-  .hand-dock { height: 242px; flex-basis: 242px; padding-inline: 16px; overflow: hidden; }
-  .hand { height: 196px; justify-content: flex-start; padding-inline: 10px; }
-  .card { flex-basis: 132px; height: 176px; margin-left: -10px; }
-  .card-art { height: 88px; }
-  #responseOverlay { padding: 0 12px 14px; align-items: end; }
-  #responseOverlay .combat-modal { width: min(540px, calc(100vw - 24px)); }
-}
-
-@media (max-width: 620px) {
-  .topbar { align-items: flex-start; gap: 10px; }
-  .top-actions { flex-wrap: wrap; justify-content: flex-end; }
-  .brand h1 { font-size: 17px; }
-  .battlefield { grid-template-rows: auto auto auto; min-height: 780px; }
-  .player-zone { grid-template-columns: minmax(0, 1fr); gap: 10px; padding: 10px 0; }
-  .identity-panel { justify-self: start; }
-  .hero-line { justify-content: flex-start; overflow-x: auto; padding: 6px 8px 12px; }
-  .hero-card.full-face-hero { width: 118px; height: 166px; flex: 0 0 auto; }
-  .hero-card.full-face-hero.active { width: 126px; height: 177px; }
-  .arena-core { min-height: 120px; }
-  .hand-dock { height: 218px; flex-basis: 218px; }
-  .hand { height: 174px; }
-  .card { flex-basis: 112px; height: 149px; }
-  .card-art { height: 72px; }
-  .tutorial-hint { top: 10px; width: calc(100vw - 24px); font-size: 12px; }
-  .tutorial-explain { width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow-y: auto; }
+@media (max-height: 820px) {
+  .app-shell { min-height: 0; }
 }
