@@ -11,15 +11,13 @@ if not exist "%LAUNCHER%" (
   pause
   exit /b 2
 )
-set "EXTRA_ARGS="
-if defined WAVES_DUEL_NO_BROWSER set "EXTRA_ARGS=-NoBrowser -SkipAiSetup"
-if defined WAVES_DUEL_DEBUG echo LAUNCHER=%LAUNCHER% ^| ARGS=%EXTRA_ARGS%
-powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LAUNCHER%" %EXTRA_ARGS%
+if defined WAVES_DUEL_DEBUG echo LAUNCHER=%LAUNCHER%
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%LAUNCHER%"
 set "EXIT_CODE=%ERRORLEVEL%"
 if not "%EXIT_CODE%"=="0" (
   echo.
-  echo [START FAILED] Exit code %EXIT_CODE%. The detailed error is shown above.
-  echo Take a screenshot of this window if you need support.
+  echo [START FAILED] Exit code %EXIT_CODE%. The root cause is shown above as [LAUNCHER ERROR].
+  echo Take a screenshot including the ?Error:? line if you need support.
   echo.
   pause
 )

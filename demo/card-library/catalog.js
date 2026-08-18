@@ -71,7 +71,7 @@
                                          "height":  1072
                                      },
                       "watermark":  "SAMPLE (source retained; not removed)",
-                      "text":  "【领队】【对抗】己方以蓝色卡对抗时，可以公开己方卡组顶2张卡并加入手牌。"
+                      "text":  "【领队】【判定】己方以绿色卡对抗时，可以公开己方卡组顶2张卡并加入手牌。"
                   },
                   {
                       "id":  "SD02-003",
@@ -143,7 +143,7 @@
                                          "height":  1072
                                      },
                       "watermark":  "SAMPLE (source retained; not removed)",
-                      "text":  "【领队】己方的红色卡技能【连击】此卡伤害+1。"
+                      "text":  "【领队】己方的红色卡获得技能【连击】此卡伤害+1。"
                   },
                   {
                       "id":  "SD02-006",
@@ -459,7 +459,7 @@
                       "speed":  0
                   },
                   {
-                      "art":  "art/绿色功能/SD02-020.png",
+                      "art":  "art/绿色功能/SD02-021.png",
                       "id":  "SD02-020",
                       "type":  "action",
                       "cost":  0,
@@ -480,7 +480,7 @@
                       "speed":  5
                   },
                   {
-                      "art":  "art/绿色功能/SD02-021.png",
+                      "art":  "art/绿色功能/SD02-020.png",
                       "id":  "SD02-021",
                       "type":  "action",
                       "cost":  1,
@@ -518,7 +518,7 @@
                       "text":  "【领队技】己方领队为此卡专属角色时方可使用。",
                       "attack":  3,
                       "kind":  "attack",
-                      "category":  "领队技",
+                      "category":  "共鸣技",
                       "watermark":  "SAMPLE (source retained; not removed)",
                       "speed":  13
                   },
@@ -537,7 +537,7 @@
                                          "width":  765,
                                          "height":  1072
                                      },
-                      "text":  "【领队技】己方领队为此卡专属角色时方可使用；【己方回合开始时】抽1张卡。",
+                      "text":  "【领队技】己方领队为此卡专属角色时方可使用。",
                       "attack":  5,
                       "kind":  "attack",
                       "category":  "共鸣技",
@@ -560,7 +560,7 @@
                                          "height":  1072
                                      },
                       "watermark":  "SAMPLE (source retained; not removed)",
-                      "text":  "【领队】【各回合开始时】抽1张卡。"
+                      "text":  "【己方回合开始时】抽1张卡。"
                   },
                   {
                       "id":  "SD01-002",
@@ -596,7 +596,7 @@
                                          "height":  1072
                                      },
                       "watermark":  "SAMPLE (source retained; not removed)",
-                      "text":  "【领队】【对抗】己方以蓝色卡对抗时，可以公开己方卡组顶2张卡并加入手牌。"
+                      "text":  "【领队】【判定】己方以绿色卡对抗时，可以公开己方卡组顶2张卡并加入手牌。"
                   },
                   {
                       "id":  "SD01-003",
@@ -614,7 +614,7 @@
                                          "height":  1072
                                      },
                       "watermark":  "SAMPLE (source retained; not removed)",
-                      "text":  "【领队】【对抗】对方以红色卡对抗时，对方可以支付1点费用，对方受到3点伤害。"
+                      "text":  "【领队】【对抗】对方以红色卡对抗时，对方可以支付1点费用，若未支付，对方受到3点伤害。"
                   },
                   {
                       "id":  "SD01-004",
@@ -724,7 +724,7 @@
                                          "width":  765,
                                          "height":  1072
                                      },
-                      "text":  "【领队技】己方领队为此卡专属角色时方可使用；【判定】若己方以此卡对抗蓝色卡失败，己方可以将此卡置于协奏区。",
+                      "text":  "【领队技】己方领队为此卡专属角色时方可使用；【判定】若己方以此卡对抗蓝色卡失败，己方可以将此卡加入手牌。",
                       "attack":  2,
                       "kind":  "attack",
                       "category":  "共鸣技",
@@ -852,7 +852,7 @@
                                          "width":  765,
                                          "height":  1072
                                      },
-                      "text":  "【领队技】己方领队为此卡专属角色时方可使用；【判定】若己方胜利，下个回合对方不能连击。",
+                      "text":  "【领队技】己方领队为此卡专属角色时方可使用；【判定】若己方胜利，下个回合中，对方的红色卡费用+1。",
                       "attack":  4,
                       "kind":  "attack",
                       "category":  "共鸣技",
@@ -961,7 +961,7 @@
                       "text":  "【领队技】己方领队为此卡专属角色时方可使用。",
                       "attack":  1,
                       "kind":  "attack",
-                      "category":  "领队技",
+                      "category":  "共鸣技",
                       "watermark":  "SAMPLE (source retained; not removed)",
                       "speed":  16
                   },
@@ -1027,10 +1027,10 @@
                       "text":  "【领队】【对抗】己方以红色卡对抗时，造成1点伤害。"
                   },
                   {
-                      "id":  "LOCAL-CHIXIA-001",
-                      "sourceImage":  null,
+                      "id":  "SD01-007",
+                      "sourceImage":  "炽霞-SD01-007-用户提供.jpg",
                       "level":  null,
-                      "art":  "art/红色攻击/SD01-012.png",
+                      "art":  "art/红色攻击/SD01-007.png",
                       "category":  "红色攻击",
                       "hero":  "chixia",
                       "type":  "action",
@@ -1040,15 +1040,13 @@
                       "cost":  0,
                       "speed":  6,
                       "attack":  1,
-                      "shield":  null,
-                      "text":  "常态攻击。数值由用户确认：速度6、攻击1。",
-                      "provenance":  "用户确认数值，待补充独立卡图。"
+                      "text":  ""
                   },
                   {
-                      "id":  "LOCAL-CHIXIA-002",
-                      "sourceImage":  null,
+                      "id":  "SD01-008",
+                      "sourceImage":  "炽霞-SD01-008-用户提供.jpg",
                       "level":  null,
-                      "art":  "art/蓝色闪避/SD01-013.png",
+                      "art":  "art/蓝色闪避/SD01-008.png",
                       "category":  "蓝色闪避",
                       "hero":  "chixia",
                       "type":  "action",
@@ -1058,9 +1056,7 @@
                       "cost":  0,
                       "speed":  0,
                       "attack":  3,
-                      "shield":  null,
-                      "text":  "闪避反击。数值由用户确认：攻击3。",
-                      "provenance":  "用户确认数值，待补充独立卡图。"
+                      "text":  ""
                   }
               ]
 }); });

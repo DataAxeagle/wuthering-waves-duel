@@ -1,6 +1,13 @@
 # Distribution artifacts and raw source material
 output/
 卡牌素材/
+输入素材/
+backups/
+桌面EXE版/
+demo/demo/
+changes/changes/
+rules/rules/
+tests/tests/
 
 # Runtime secrets and local state
 .env

@@ -11,48 +11,18 @@
   <div class="app-shell">
     <header class="topbar">
       <div class="brand">
-        <span class="brand-mark">◇</span>
-        <div>
-          <p class="eyebrow">Wuthering Waves: Duel // LOCAL PROTOTYPE</p>
-          <h1>鸣潮：对决</h1>
-        </div>
+        <img class="brand-menu-logo" src="assets/menu/wuthering-waves-duel-logo.png" alt="鸣潮：对决" />
+        <h1 class="sr-only">鸣潮：对决</h1>
       </div>
       <div class="top-actions">
-        <span id="aiModeBadge" class="badge">检测 AI 服务…</span>
         <button class="icon-btn" id="menuButton" type="button">主菜单</button>
         <button class="icon-btn" id="saveGameButton" type="button">保存对局</button>
         <button class="icon-btn" id="rulesButton" type="button" aria-label="查看规则">规则</button>
-        <button class="icon-btn" id="restartButton" type="button">重开对局</button>
       </div>
     </header>
 
     <main class="game-layout">
       <aside class="side-panel">
-        <section class="turn-card">
-          <p class="eyebrow">回合状态</p>
-          <div class="turn-number" id="turnNumber">01</div>
-          <p class="turn-owner" id="turnOwner">正在初始化</p>
-          <div class="phase-track">
-            <span class="phase active">抽牌</span>
-            <span class="phase active">主要</span>
-            <span class="phase active">战斗</span>
-            <span class="phase">结束</span>
-          </div>
-        </section>
-
-        <section class="tone-guide">
-          <p class="eyebrow">频率克制</p>
-          <div class="tone-cycle">
-            <span class="tone blaze">◆ 红色攻击</span>
-            <span class="arrow">›</span>
-            <span class="tone gale">✶ 绿色攻击</span>
-            <span class="arrow">›</span>
-            <span class="tone tide">◎ 蓝色躲避</span>
-            <span class="arrow">↺</span>
-          </div>
-          <p class="microcopy">红克绿、绿克蓝、蓝克红；同色攻击比较速度。</p>
-        </section>
-
         <section class="battle-log">
           <div class="panel-heading">
             <p class="eyebrow">对局记录</p>
@@ -63,6 +33,21 @@
       </aside>
 
       <section class="battlefield">
+        <section class="turn-card battlefield-turn-card" aria-label="回合状态">
+          <div>
+            <p class="eyebrow">回合状态</p>
+            <div class="turn-number" id="turnNumber">01</div>
+          </div>
+          <div>
+            <p class="turn-owner" id="turnOwner">正在初始化</p>
+            <div class="phase-track">
+              <span class="phase" data-phase="draw">抽牌</span>
+              <span class="phase" data-phase="main">主要</span>
+              <span class="phase" data-phase="battle">战斗</span>
+              <span class="phase" data-phase="end">结束</span>
+            </div>
+          </div>
+        </section>
         <div id="aiZone" class="player-zone opponent-zone"></div>
 
         <div class="arena-core">
@@ -85,14 +70,6 @@
       </section>
 
       <aside class="action-panel">
-        <section class="selection-card">
-          <p class="eyebrow">当前选择</p>
-          <div id="selectionPreview" class="selection-preview empty">
-            <span class="empty-glyph">◇</span>
-            <p>点击手牌或角色</p>
-          </div>
-        </section>
-
         <section class="action-stack">
           <p class="eyebrow">主要阶段 <span id="resonanceBadge" class="badge">自由选择</span></p>
           <button id="chargeButton" class="action-button charge" type="button">
@@ -110,22 +87,74 @@
           <button id="playButton" class="primary-button" type="button"><b>进入战斗</b><small>双方同时翻牌后才扣除费用</small></button>
           <button id="endTurnButton" class="secondary-button" type="button"><b>结束回合</b><small>跳过战斗，交给对手</small></button>
         </section>
+        <section class="selection-card">
+          <p class="eyebrow">当前选择</p>
+          <div id="selectionPreview" class="selection-preview empty">
+            <span class="empty-glyph">◇</span>
+            <p>点击手牌或角色</p>
+          </div>
+        </section>
       </aside>
     </main>
 
     <section class="hand-dock">
+      <div id="hand" class="hand"></div>
       <div class="hand-meta">
         <div>
           <p class="eyebrow">我方手牌</p>
           <strong><span id="handCount">0</span> / 8</strong>
         </div>
-        <div class="hint">单击卡牌查看，再从右侧执行操作</div>
       </div>
-      <div id="hand" class="hand"></div>
     </section>
   </div>
 
   <div id="animationLayer" class="animation-layer hidden" aria-live="polite"></div>
+  <aside id="logCardTooltip" class="log-card-tooltip hidden" role="tooltip" aria-live="polite"></aside>
+
+  <section id="pauseMenuOverlay" class="pause-menu-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pauseMenuTitle">
+    <div class="pause-menu-card">
+      <p class="eyebrow">PAUSED DUEL</p>
+      <h2 id="pauseMenuTitle">主菜单</h2>
+      <div class="pause-menu-actions">
+        <button id="resumeGameButton" class="primary-button" type="button">返回当前对局</button>
+        <button id="pauseSaveButton" class="secondary-button" type="button">保存对局</button>
+        <button id="pauseRulesButton" class="secondary-button" type="button">规则</button>
+        <button id="pauseCodexButton" class="secondary-button" type="button">卡牌图鉴</button>
+        <button id="returnHomeButton" class="secondary-button" type="button">返回主界面</button>
+        <button id="pauseExitButton" class="secondary-button danger-button" type="button">退出游戏</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="roleDeckOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="roleDeckTitle">
+    <div class="modal role-deck-modal">
+      <p class="eyebrow">CHARACTER DECK</p>
+      <h2 id="roleDeckTitle">角色牌库</h2>
+      <p id="roleDeckLead" class="modal-lead">点击左侧角色牌，在右侧查看完整效果。</p>
+      <div class="role-deck-browser">
+        <div id="roleDeckCards" class="role-deck-cards" aria-label="角色牌预览"></div>
+        <article id="roleDeckDetail" class="role-deck-detail" aria-live="polite"></article>
+      </div>
+      <button id="closeRoleDeckButton" class="secondary-button wide" type="button">关闭，返回对战</button>
+    </div>
+  </section>
+
+  <section id="duelCodexOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="duelCodexTitle">
+    <div class="modal duel-codex-modal">
+      <button class="close-button" id="closeDuelCodexButton" type="button" aria-label="关闭卡牌图鉴">×</button>
+      <p class="eyebrow">CARD CODEX</p>
+      <h2 id="duelCodexTitle">卡牌图鉴</h2>
+      <p class="modal-lead">浏览已收录卡牌。关闭右上角按钮后将直接回到当前对局。</p>
+      <div class="codex-controls">
+        <label class="preset-select">卡牌类型<select id="duelCodexCategorySelect"><option value="all">全部卡牌</option><option value="角色牌">角色牌</option><option value="红色攻击">红色攻击</option><option value="绿色功能">绿色功能</option><option value="蓝色闪避">蓝色闪避</option><option value="领队技">领队技</option><option value="变奏技">变奏技</option><option value="共鸣技">共鸣技</option></select></label>
+        <label class="preset-select">卡牌<select id="duelCodexCardSelect"></select></label>
+      </div>
+      <div class="codex-detail">
+        <div id="duelCodexCardVisual" class="codex-card-visual" aria-live="polite"></div>
+        <article id="duelCodexCardInfo" class="codex-card-info" aria-live="polite"></article>
+      </div>
+    </div>
+  </section>
 
   <section id="upgradeGuide" class="upgrade-guide hidden" aria-live="polite">
     <p class="eyebrow">CHARACTER UPGRADE</p>
@@ -139,20 +168,35 @@
   </section>
 
   <div id="mainMenuOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mainMenuTitle">
-    <div class="modal main-menu-modal">
-      <p class="eyebrow">Wuthering Waves: Duel // LOCAL ARENA</p>
-      <h2 id="mainMenuTitle">鸣潮：对决</h2>
+    <div class="menu-cover-shell">
+      <video class="menu-cover-video" id="menuBackgroundVideo" autoplay muted loop playsinline preload="auto" aria-label="鸣潮对决封面背景">
+        <source src="assets/menu/8月17日.mp4" type="video/mp4" />
+      </video>
+      <div class="menu-cover-veil" aria-hidden="true"></div>
+      <div class="menu-cover-grain" aria-hidden="true"></div>
+      <button class="menu-sound-toggle is-muted" id="menuSoundToggle" type="button" aria-label="开启背景音乐" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3.5 9.4v5.2h4.2l5.2 4.1V5.3L7.7 9.4H3.5Z" fill="currentColor" /><path class="sound-wave" d="M16 9.2c1.2 1.5 1.2 4.1 0 5.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path class="sound-wave" d="M18.8 6.9c2.6 2.8 2.6 7.4 0 10.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg>
+      </button>
+      <div class="menu-cover-content">
+        <p class="menu-cover-eyebrow">WUTHERING WAVES · CARD BATTLE</p>
+        <h2 id="mainMenuTitle" class="sr-only">鸣潮：对决</h2>
+        <img class="menu-cover-logo" src="assets/menu/wuthering-waves-duel-logo.png" alt="鸣潮：对决" />
+        <p class="menu-cover-subtitle">共鸣者集结，策略对决即刻开启</p>
+        <div class="menu-cover-actions" aria-label="主菜单">
+          <button class="menu-cover-primary" data-menu-page="start" type="button">开始游戏</button>
+          <button class="menu-cover-secondary" data-menu-page="deck-builder" type="button">自组牌组</button>
+          <button id="returnToGameButton" class="menu-cover-secondary" type="button" hidden>返回当前对局</button>
+          <button class="menu-cover-secondary" data-menu-page="load" type="button">加载游戏</button>
+          <button class="menu-cover-secondary" data-menu-page="settings" type="button">设置</button>
+          <button class="menu-cover-secondary" data-menu-page="stats" type="button">数据统计</button>
+          <button class="menu-cover-secondary" data-menu-page="test-lab" type="button">卡牌测试场</button>
+          <button class="menu-cover-secondary" data-menu-page="codex" type="button">卡牌图鉴</button>
+          <button id="exitGameButton" class="menu-cover-secondary danger" type="button">退出游戏</button>
+        </div>
+      </div>
       <div class="main-menu-layout">
-        <nav class="main-menu-list" aria-label="主菜单">
-          <button id="returnToGameButton" class="menu-entry active" type="button" hidden><b>00</b><span>返回当前对局</span></button>
-          <button class="menu-entry active" data-menu-page="start" type="button"><b>01</b><span>开始游戏</span></button>
-          <button class="menu-entry" data-menu-page="load" type="button"><b>02</b><span>加载游戏</span></button>
-          <button class="menu-entry" data-menu-page="settings" type="button"><b>03</b><span>设置</span></button>
-          <button class="menu-entry" data-menu-page="stats" type="button"><b>04</b><span>数据统计</span></button>
-          <button class="menu-entry" data-menu-page="test-lab" type="button"><b>05</b><span>卡牌测试场</span></button>
-          <button id="exitGameButton" class="menu-entry danger" type="button"><b>06</b><span>退出游戏</span></button>
-        </nav>
-        <section class="menu-page" id="menuStartPanel">
+        <button class="menu-panel-back" data-menu-page="home" type="button">← 返回封面</button>
+        <section class="menu-page hidden" id="menuStartPanel">
           <p class="modal-lead">选择 AI 难度和预设卡组，然后开始新的本地对战。</p>
           <label class="preset-select">玩家名称<input id="playerNameInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
           <small>首次开始游戏前需要填写；之后会自动记住，也可以在“设置”中修改。</small>
@@ -169,6 +213,24 @@
           </section>
           <button id="startGameButton" class="primary-button wide" type="button">开始游戏</button>
         </section>
+        <section class="menu-page hidden deck-builder-page" id="menuDeckBuilderPanel">
+          <p class="modal-lead">拖拽右侧卡牌到左侧组牌区。角色按角色加入，自动包含 Lv.0–Lv.2；行动牌每种最多 3 张，行动牌总数须为 40 张。</p>
+          <div class="deck-builder-layout">
+            <section class="deck-builder-current" aria-labelledby="deckBuilderTitle">
+              <div class="deck-builder-heading"><div><p class="eyebrow">MY DECK</p><h3 id="deckBuilderTitle">未命名牌组</h3></div><span id="deckBuilderSummary" class="deck-builder-count">角色 0 / 3 · 行动 0 / 40</span></div>
+              <div id="deckBuilderRoles" class="deck-builder-zone role-zone" data-deck-drop="role"><p>角色牌区<br><small>拖入一名角色，自动加入 Lv.0–Lv.2</small></p></div>
+              <div id="deckBuilderActions" class="deck-builder-zone action-zone" data-deck-drop="action"><p>行动牌区<br><small>每种行动牌最多 3 张</small></p></div>
+              <label class="preset-select">牌组名称<input id="customDeckNameInput" type="text" maxlength="20" placeholder="例如：炽霞快攻" /></label>
+              <div class="deck-builder-save-row"><button id="saveCustomDeckButton" class="primary-button" type="button">保存牌组</button><button id="clearCustomDeckButton" class="secondary-button" type="button">清空当前组牌</button></div>
+              <div id="customDeckSavedList" class="custom-deck-saved-list"></div>
+            </section>
+            <section class="deck-builder-library" aria-label="本地卡牌库">
+              <div class="deck-builder-filters"><label class="preset-select">类型<select id="deckBuilderFilter"><option value="all">全部卡牌</option><option value="角色">角色卡</option><option value="red">红色卡</option><option value="green">绿色卡</option><option value="blue">蓝色卡</option></select></label><span>每次拖入 1 张；重复拖入可增加数量</span></div>
+              <div id="deckBuilderLibrary" class="deck-builder-library-cards"></div>
+              <div id="deckBuilderPreview" class="deck-builder-preview empty-hand">选择右侧卡牌查看卡面、数值与效果。</div>
+            </section>
+          </div>
+        </section>
         <section class="menu-page hidden" id="menuLoadPanel">
           <p class="modal-lead">加载本浏览器中保存的局内对局。每次保存会覆盖上一个存档。</p>
           <div id="saveSlotInfo" class="save-slot empty-hand">暂无可加载的对局存档。</div>
@@ -176,7 +238,7 @@
           <button id="deleteSaveButton" class="secondary-button wide" type="button" disabled>删除存档</button>
         </section>
         <section class="menu-page hidden" id="menuSettingsPanel">
-          <p class="modal-lead">请使用“启动游戏.cmd”打开游戏后再配置 DeepSeek API Key。Key 会保存至当前 Windows 用户凭据中，供后续更新版本继续使用。</p>
+          <p class="modal-lead">在桌面 EXE 或“启动游戏.cmd”运行的本地版中填写 DeepSeek API Key。Key 会加密保存至当前 Windows 用户凭据中，供后续更新版本继续使用。</p>
           <label class="preset-select">玩家名称<input id="playerNameSettingsInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
           <button id="savePlayerNameButton" class="secondary-button wide" type="button">保存玩家名称</button>
           <label class="preset-select">DeepSeek API Key<input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." /></label>
@@ -200,7 +262,19 @@
           <div id="menuStats" class="stats-grid"></div>
           <button id="clearStatsButton" class="text-button" type="button">清空本地战绩</button>
         </section>
+        <section class="menu-page hidden" id="menuCodexPanel">
+          <p class="modal-lead">浏览已收录卡牌。先选择类型，再从下拉框选择具体卡牌。</p>
+          <div class="codex-controls">
+            <label class="preset-select">卡牌类型<select id="codexCategorySelect"><option value="all">全部卡牌</option><option value="角色牌">角色牌</option><option value="红色攻击">红色攻击</option><option value="绿色功能">绿色功能</option><option value="蓝色闪避">蓝色闪避</option><option value="领队技">领队技</option><option value="变奏技">变奏技</option><option value="共鸣技">共鸣技</option></select></label>
+            <label class="preset-select">卡牌<select id="codexCardSelect"></select></label>
+          </div>
+          <div class="codex-detail">
+            <div id="codexCardVisual" class="codex-card-visual" aria-live="polite"></div>
+            <article id="codexCardInfo" class="codex-card-info" aria-live="polite"></article>
+          </div>
+        </section>
       </div>
+      <p class="menu-cover-version">鸣潮：对决 · 本地版</p>
     </div>
   </div>
   <div id="tutorialChoiceOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialChoiceTitle">
@@ -215,6 +289,8 @@
     </div>
   </div>
   <section id="tutorialHint" class="tutorial-hint hidden" aria-live="polite"></section>
+  <div id="tutorialScrim" class="tutorial-scrim hidden" aria-hidden="true"></div>
+  <div id="tutorialFocusFrame" class="tutorial-focus-frame hidden" aria-hidden="true"></div>
   <section id="tutorialExplainOverlay" class="tutorial-explain hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialExplainTitle">
     <div class="tutorial-explain-card">
       <p class="eyebrow">NEW PLAYER GUIDE</p>

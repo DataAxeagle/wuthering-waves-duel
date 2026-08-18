@@ -17,6 +17,10 @@ const AI_STATE_DIRECTORY = path.join(process.env.LOCALAPPDATA || process.env.APP
 const AI_KEY_FILE = path.join(AI_STATE_DIRECTORY, "deepseek-key.dat");
 const PLAYER_PROFILE_FILE = path.join(AI_STATE_DIRECTORY, "player-profile.json");
 const DECISION_LOG_DIRECTORY = path.join(PACKAGE_ROOT, "AI决策记录");
+const CLIENT_LEASE_MS = 9000;
+const CLIENT_EXIT_GRACE_MS = 1200;
+const clients = new Map();
+let shutdownTimer = null;
 
 function powershell(script, input) {
   const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script], {
@@ -45,6 +49,37 @@ function saveApiKey(value) {
 }
 
 let apiKey = process.env.DEEPSEEK_API_KEY || loadSavedApiKey();
+
+function clearShutdownTimer() {
+  if (shutdownTimer) clearTimeout(shutdownTimer);
+  shutdownTimer = null;
+}
+
+function pruneInactiveClients() {
+  const now = Date.now();
+  for (const [clientId, lastSeen] of clients) if (now - lastSeen > CLIENT_LEASE_MS) clients.delete(clientId);
+}
+
+function scheduleShutdownIfIdle() {
+  clearShutdownTimer();
+  shutdownTimer = setTimeout(() => {
+    pruneInactiveClients();
+    if (clients.size === 0) process.exit(0);
+  }, CLIENT_EXIT_GRACE_MS);
+}
+
+function touchClient(clientId) {
+  if (!clientId) return false;
+  clearShutdownTimer();
+  clients.set(clientId, Date.now());
+  return true;
+}
+
+function removeClient(clientId) {
+  if (clientId) clients.delete(clientId);
+  pruneInactiveClients();
+  if (clients.size === 0) scheduleShutdownIfIdle();
+}
 
 function readPlayerProfile() {
   try {
@@ -232,7 +267,23 @@ function serveStatic(request, response) {
 function createServer() {
   return http.createServer(async (request, response) => {
     if (request.method === "GET" && request.url === "/api/status") {
-      sendJson(response, 200, { configured: Boolean(apiKey), model: MODEL });
+      sendJson(response, 200, { app: "wuthering-waves-duel", configured: Boolean(apiKey), model: MODEL, activeClients: clients.size });
+      return;
+    }
+    if (request.method === "POST" && request.url === "/api/session/heartbeat") {
+      try {
+        const payload = await readJson(request);
+        if (!touchClient(String(payload.clientId || "").slice(0, 128))) { sendJson(response, 400, { error: "invalid_client" }); return; }
+        sendJson(response, 200, { ok: true, activeClients: clients.size });
+      } catch (error) { sendJson(response, 400, { error: error.message || "invalid_request" }); }
+      return;
+    }
+    if (request.method === "POST" && request.url === "/api/session/bye") {
+      try {
+        const payload = await readJson(request);
+        removeClient(String(payload.clientId || "").slice(0, 128));
+        sendJson(response, 200, { ok: true, shuttingDownWhenIdle: clients.size === 0 });
+      } catch (error) { sendJson(response, 400, { error: error.message || "invalid_request" }); }
       return;
     }
     if (request.method === "GET" && request.url === "/api/player-data") {

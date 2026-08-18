@@ -5,7 +5,7 @@ const path = require("node:path");
 const catalog = require("../demo/card-library/catalog.js");
 const { presets } = require("../demo/card-library/presets.js");
 
-test("实体卡组分类库收录来源卡、炽霞 Lv.0 与用户确认的砰砰卡", () => {
+test("实体卡组分类库只收录有来源卡面的卡牌", () => {
   assert.equal(catalog.cards.length, 52);
   assert.equal(new Set(catalog.cards.map((card) => card.id)).size, 52);
   assert.equal(catalog.cards.filter((card) => card.type === "character").length, 18);
@@ -20,12 +20,23 @@ test("实体卡组分类库收录来源卡、炽霞 Lv.0 与用户确认的砰�
   assert.deepEqual([red.speed, red.attack], [7, 1]);
   const green = catalog.cards.find((card) => card.id === "SD02-020");
   assert.deepEqual([green.speed, green.attack], [5, 0]);
-  const blue = catalog.cards.find((card) => card.id === "LOCAL-CHIXIA-002");
+  assert.equal(green.name, "感知");
+  assert.equal(green.art, "art/绿色功能/SD02-021.png", "感知必须使用正确的 SD02-021 卡面");
+  const hook = catalog.cards.find((card) => card.id === "SD02-021");
+  assert.equal(hook.name, "钩索");
+  assert.equal(hook.art, "art/绿色功能/SD02-020.png", "钩索必须使用正确的 SD02-020 卡面");
+  const blue = catalog.cards.find((card) => card.id === "SD01-008");
   assert.deepEqual([blue.speed, blue.attack], [0, 3]);
   const ling = catalog.cards.find((card) => card.id === "SD02-010");
   assert.match(ling.text, /本回合中己方不能切换领队/);
   assert.match(ling.text, /抽3张卡/);
   assert.match(ling.text, /【追击8】/);
+  for (const id of ["BP01-021", "BP01-018"]) {
+    const rover = catalog.cards.find((card) => card.id === id);
+    assert.match(rover.text, /己方以绿色卡对抗时/);
+    assert.doesNotMatch(rover.text, /失败/);
+    assert.match(rover.text, /顶2张卡/);
+  }
 });
 
 test("男女漂泊者预设均为 9 张角色牌和 40 张行动牌", () => {
@@ -43,6 +54,7 @@ test("实体卡库覆盖运行时行动卡，且不引用旧 AI 卡面路径", (
   const ui = fs.readFileSync(path.join(__dirname, "..", "demo", "game.js"), "utf8");
   assert.match(core, /card-library\/catalog\.js/);
   assert.match(core, /card-library\/presets\.js/);
-  assert.match(ui, /card-library\/\$\{art\}/);
+  assert.match(ui, /function cardArtPath\(art\)/);
+  assert.match(ui, /encodeURI\(`card-library\/\$\{String\(art\)/);
   assert.doesNotMatch(ui, /assets\/(heroes|actions)/);
 });

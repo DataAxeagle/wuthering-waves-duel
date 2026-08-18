@@ -18,7 +18,11 @@ trap {
     "Error: $($_.Exception.Message)"
   ) -join [Environment]::NewLine
   try { [System.IO.File]::WriteAllText($DiagnosticLog, $details, [System.Text.UTF8Encoding]::new($false)) } catch { }
-  throw
+  Write-Host ''
+  Write-Host '[LAUNCHER ERROR] 游戏未能启动。' -ForegroundColor Red
+  Write-Host $details -ForegroundColor Red
+  Write-Host '请截图以上“Error:”一行反馈；无需查找日志文件。' -ForegroundColor Yellow
+  exit 1
 }
 $CredentialTarget = 'WutheringWavesDuel.DeepSeek.ApiKey'
 $StateRoot = Join-Path $env:LOCALAPPDATA 'WutheringWavesDuel'
@@ -211,21 +215,60 @@ function Stop-ExistingProjectServer([int]$Port) {
   }
 }
 
+function Wait-ForPortRelease([int]$Port) {
+  for ($attempt = 0; $attempt -lt 25; $attempt += 1) {
+    $listeners = @(Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+    if (-not $listeners.Count) { return }
+    Start-Sleep -Milliseconds 200
+  }
+  throw "端口 $Port 在结束旧游戏服务后仍未释放。请稍等片刻后重试。"
+}
+
+function Test-DuelServiceAtPort([int]$Port) {
+  try {
+    $status = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/api/status" -UseBasicParsing -TimeoutSec 1
+    $content = [string]$status.Content
+    return $status.StatusCode -eq 200 -and (
+      $content -match '"app"\s*:\s*"wuthering-waves-duel"' -or
+      ($content -match '"configured"' -and $content -match '"model"')
+    )
+  } catch { return $false }
+}
+
 function Get-AvailableGamePort {
   foreach ($candidate in 4173..4193) {
     $listeners = @(Get-NetTCPConnection -LocalPort $candidate -State Listen -ErrorAction SilentlyContinue)
-    if (-not $listeners.Count) { return $candidate }
-    foreach ($listener in $listeners) {
-      $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
-      $commandLine = [string]$processInfo.CommandLine
-      if ($commandLine -like "*$ProjectRoot*" -and $commandLine -match 'server\.js') {
-        Stop-Process -Id $listener.OwningProcess -Force
-        Start-Sleep -Milliseconds 350
-        return $candidate
+    $isDuelService = Test-DuelServiceAtPort $candidate
+    if ($isDuelService) {
+      foreach ($listener in $listeners) {
+        $processInfo = Get-CimInstance Win32_Process -Filter "ProcessId = $($listener.OwningProcess)" -ErrorAction SilentlyContinue
+        $commandLine = [string]$processInfo.CommandLine
+        if ($commandLine -match 'server\.js') {
+          try { Stop-Process -Id $listener.OwningProcess -Force } catch { }
+        }
       }
+      Start-Sleep -Milliseconds 500
+      if (-not (Test-DuelServiceAtPort $candidate)) { return $candidate }
+      continue
     }
+    if (-not $listeners.Count) { return $candidate }
   }
-  throw '未找到可用的本地端口（4173–4193）。请关闭其他正在运行的本地服务后重试。'
+  throw '4173–4193 端口都被其他程序占用。请关闭正在运行的本地服务后再试。'
+}
+
+function Open-GamePage([string]$Url) {
+  Write-Host ''
+  Write-Host "游戏地址：$Url" -ForegroundColor Cyan
+  Write-Host '若浏览器没有自动打开，请复制上面的地址到任意浏览器地址栏。' -ForegroundColor Yellow
+  try {
+    Start-Process -FilePath 'explorer.exe' -ArgumentList $Url -ErrorAction Stop
+    return
+  } catch { }
+  try {
+    Start-Process $Url -ErrorAction Stop
+    return
+  } catch { }
+  Write-Warning '无法自动唤起浏览器，但本地服务已经启动。请手动复制上方地址打开。'
 }
 
 $gamePort = Get-AvailableGamePort
@@ -248,8 +291,10 @@ Start-Sleep -Milliseconds 900
 try {
   $health = Invoke-WebRequest -Uri "http://127.0.0.1:$gamePort/api/status" -UseBasicParsing -TimeoutSec 4
   if ($health.StatusCode -ne 200) { throw "本地服务返回状态 $($health.StatusCode)。" }
+  if ([string]$health.Content -notmatch '"app"\s*:\s*"wuthering-waves-duel"') { throw '本地端口返回的不是当前版本游戏服务。' }
 } catch {
   throw "鸣潮：对决未能启动本地服务。$($_.Exception.Message)"
 }
-if ($NoBrowser) { Write-Output "Waves Duel local server started on port $gamePort." }
-else { Start-Process "http://127.0.0.1:$gamePort" }
+$gameUrl = "http://127.0.0.1:$gamePort"
+if ($NoBrowser) { Write-Output "Waves Duel local server started on $gameUrl." }
+else { Open-GamePage $gameUrl }
