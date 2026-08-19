@@ -1,0 +1,10 @@
+# Local Windows runtime and packaged launcher are distributed through GitHub Releases.
+启动鸣潮对决.exe
+启动鸣潮对决.pdb
+app/runtime/
+AI决策记录/
+
+# Local development artifacts.
+node_modules/
+.DS_Store
+Thumbs.db

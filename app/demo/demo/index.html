@@ -1,0 +1,290 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>鸣潮：对决 | Wuthering Waves: Duel</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">◇</span>
+        <div>
+          <p class="eyebrow">Wuthering Waves: Duel // LOCAL PROTOTYPE</p>
+          <h1>鸣潮：对决</h1>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="aiModeBadge" class="badge">检测 AI 服务…</span>
+        <button class="icon-btn" id="menuButton" type="button">主菜单</button>
+        <button class="icon-btn" id="saveGameButton" type="button">保存对局</button>
+        <button class="icon-btn" id="rulesButton" type="button" aria-label="查看规则">规则</button>
+        <button class="icon-btn" id="restartButton" type="button">重开对局</button>
+      </div>
+    </header>
+
+    <main class="game-layout">
+      <aside class="side-panel">
+        <section class="turn-card">
+          <p class="eyebrow">回合状态</p>
+          <div class="turn-number" id="turnNumber">01</div>
+          <p class="turn-owner" id="turnOwner">正在初始化</p>
+          <div class="phase-track">
+            <span class="phase active">抽牌</span>
+            <span class="phase active">主要</span>
+            <span class="phase active">战斗</span>
+            <span class="phase">结束</span>
+          </div>
+        </section>
+
+        <section class="tone-guide">
+          <p class="eyebrow">频率克制</p>
+          <div class="tone-cycle">
+            <span class="tone blaze">◆ 红色攻击</span>
+            <span class="arrow">›</span>
+            <span class="tone gale">✶ 绿色攻击</span>
+            <span class="arrow">›</span>
+            <span class="tone tide">◎ 蓝色躲避</span>
+            <span class="arrow">↺</span>
+          </div>
+          <p class="microcopy">红克绿、绿克蓝、蓝克红；同色攻击比较速度。</p>
+        </section>
+
+        <section class="battle-log">
+          <div class="panel-heading">
+            <p class="eyebrow">对局记录</p>
+            <span class="live-dot"></span>
+          </div>
+          <div id="logList" class="log-list" aria-live="polite"></div>
+        </section>
+      </aside>
+
+      <section class="battlefield">
+        <div id="aiZone" class="player-zone opponent-zone"></div>
+
+        <div class="arena-core">
+          <div class="deck-readout opponent-deck" id="aiDeckReadout"></div>
+          <div class="versus-line"><span></span><b>RESONANCE</b><span></span></div>
+          <div class="combat-status" id="combatStatus">
+            <span class="status-glyph">◇</span>
+            <div>
+              <p class="eyebrow">共鸣对抗</p>
+              <strong id="statusTitle">等待行动</strong>
+              <small id="statusDetail">选择手牌开始部署</small>
+            </div>
+          </div>
+          <div class="versus-line flip"><span></span><b>ECHO</b><span></span></div>
+          <div class="deck-readout player-deck" id="playerDeckReadout"></div>
+          <div id="arenaContestStage" class="arena-contest-stage hidden" aria-live="polite"></div>
+        </div>
+
+        <div id="playerZone" class="player-zone human-zone"></div>
+      </section>
+
+      <aside class="action-panel">
+        <section class="selection-card">
+          <p class="eyebrow">当前选择</p>
+          <div id="selectionPreview" class="selection-preview empty">
+            <span class="empty-glyph">◇</span>
+            <p>点击手牌或角色</p>
+          </div>
+        </section>
+
+        <section class="action-stack">
+          <p class="eyebrow">主要阶段 <span id="resonanceBadge" class="badge">自由选择</span></p>
+          <button id="chargeButton" class="action-button charge" type="button">
+            <span class="action-icon">+</span><span><b>充能</b><small>将手牌置入协奏区</small></span>
+          </button>
+          <button id="upgradeButton" class="action-button upgrade" type="button">
+            <span class="action-icon">↑</span><span><b>升级</b><small>弃置与展示角色卡等级相同数量的手牌</small></span>
+          </button>
+          <button id="switchButton" class="action-button switch" type="button">
+            <span class="action-icon">⇄</span><span><b>更换领队</b><small>将选中的后台角色设为领队</small></span>
+          </button>
+        </section>
+
+        <section class="primary-actions">
+          <button id="playButton" class="primary-button" type="button"><b>进入战斗</b><small>双方同时翻牌后才扣除费用</small></button>
+          <button id="endTurnButton" class="secondary-button" type="button"><b>结束回合</b><small>跳过战斗，交给对手</small></button>
+        </section>
+      </aside>
+    </main>
+
+    <section class="hand-dock">
+      <div class="hand-meta">
+        <div>
+          <p class="eyebrow">我方手牌</p>
+          <strong><span id="handCount">0</span> / 8</strong>
+        </div>
+        <div class="hint">单击卡牌查看，再从右侧执行操作</div>
+      </div>
+      <div id="hand" class="hand"></div>
+    </section>
+  </div>
+
+  <div id="animationLayer" class="animation-layer hidden" aria-live="polite"></div>
+
+  <section id="upgradeGuide" class="upgrade-guide hidden" aria-live="polite">
+    <p class="eyebrow">CHARACTER UPGRADE</p>
+    <h2 id="upgradeGuideTitle">选择要升级的角色</h2>
+    <p id="upgradeGuideDetail">点击任意未达 Lv.2 的角色牌。</p>
+    <div id="upgradeGuideSummary" class="upgrade-guide-summary"></div>
+    <div class="upgrade-guide-actions">
+      <button id="confirmUpgradeButton" class="primary-button" type="button" disabled>确认升级</button>
+      <button id="cancelUpgradeButton" class="secondary-button" type="button">取消</button>
+    </div>
+  </section>
+
+  <div id="mainMenuOverlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="mainMenuTitle">
+    <div class="modal main-menu-modal">
+      <p class="eyebrow">Wuthering Waves: Duel // LOCAL ARENA</p>
+      <h2 id="mainMenuTitle">鸣潮：对决</h2>
+      <div class="main-menu-layout">
+        <nav class="main-menu-list" aria-label="主菜单">
+          <button id="returnToGameButton" class="menu-entry active" type="button" hidden><b>00</b><span>返回当前对局</span></button>
+          <button class="menu-entry active" data-menu-page="start" type="button"><b>01</b><span>开始游戏</span></button>
+          <button class="menu-entry" data-menu-page="load" type="button"><b>02</b><span>加载游戏</span></button>
+          <button class="menu-entry" data-menu-page="settings" type="button"><b>03</b><span>设置</span></button>
+          <button class="menu-entry" data-menu-page="stats" type="button"><b>04</b><span>数据统计</span></button>
+          <button id="exitGameButton" class="menu-entry danger" type="button"><b>05</b><span>退出游戏</span></button>
+        </nav>
+        <section class="menu-page" id="menuStartPanel">
+          <p class="modal-lead">选择 AI 难度和预设卡组，然后开始新的本地对战。</p>
+          <label class="preset-select">玩家名称<input id="playerNameInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
+          <small>首次开始游戏前需要填写；之后会自动记住，也可以在“设置”中修改。</small>
+          <div class="difficulty-grid" id="difficultyOptions">
+            <label class="difficulty-option"><input type="radio" name="difficulty" value="novice" checked><b>初级</b><small>只懂基础规则，偏向有什么牌出什么牌。</small></label>
+            <label class="difficulty-option"><input type="radio" name="difficulty" value="standard"><b>中级</b><small>会观察领队与克制关系，进行基础预判。</small></label>
+            <label class="difficulty-option"><input type="radio" name="difficulty" value="expert"><b>高级</b><small>按公开战场、资源、领队和追击机会寻找最优合法动作。</small></label>
+          </div>
+          <section class="preset-panel" aria-labelledby="presetTitle">
+            <p class="eyebrow" id="presetTitle">预设卡组</p>
+            <label class="preset-select">我方卡组<select id="playerPresetSelect"><option value="rover-female-yangyang-chixia">女漂泊者（预组）</option><option value="rover-male-jinhsi-sanhua">男漂泊者（预组）</option></select></label>
+            <label class="preset-select">AI 卡组<select id="aiPresetSelect"><option value="rover-male-jinhsi-sanhua">男漂泊者（预组）</option><option value="rover-female-yangyang-chixia">女漂泊者（预组）</option></select></label>
+            <small>每套均含 9 张角色牌（Lv.0–2）与 40 张行动牌。</small>
+          </section>
+          <button id="startGameButton" class="primary-button wide" type="button">开始游戏</button>
+        </section>
+        <section class="menu-page hidden" id="menuLoadPanel">
+          <p class="modal-lead">加载本浏览器中保存的局内对局。每次保存会覆盖上一个存档。</p>
+          <div id="saveSlotInfo" class="save-slot empty-hand">暂无可加载的对局存档。</div>
+          <button id="loadGameButton" class="primary-button wide" type="button" disabled>加载游戏</button>
+          <button id="deleteSaveButton" class="secondary-button wide" type="button" disabled>删除存档</button>
+        </section>
+        <section class="menu-page hidden" id="menuSettingsPanel">
+          <p class="modal-lead">输入新的 DeepSeek API Key 可在当前启动会话立即切换 AI。Key 不会写入浏览器或对局存档。</p>
+          <label class="preset-select">玩家名称<input id="playerNameSettingsInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
+          <button id="savePlayerNameButton" class="secondary-button wide" type="button">保存玩家名称</button>
+          <label class="preset-select">DeepSeek API Key<input id="apiKeyInput" type="password" autocomplete="off" placeholder="sk-..." /></label>
+          <p id="apiConfigStatus" class="microcopy">正在读取当前 AI 状态…</p>
+          <button id="saveApiButton" class="primary-button wide" type="button">应用此 API Key</button>
+          <button id="useLocalAiButton" class="secondary-button wide" type="button">切换为本地 AI</button>
+          <small>若需要让 Key 在下次启动后继续生效，可双击文件夹内的“配置 AI.vbs”。</small>
+        </section>
+        <section class="menu-page hidden" id="menuStatsPanel">
+          <p class="modal-lead">数据只保存在当前浏览器。</p>
+          <div id="menuStats" class="stats-grid"></div>
+          <button id="clearStatsButton" class="text-button" type="button">清空本地战绩</button>
+        </section>
+      </div>
+    </div>
+  </div>
+  <div id="tutorialChoiceOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialChoiceTitle">
+    <div class="modal tutorial-choice-modal">
+      <p class="eyebrow">FIRST DUEL GUIDE</p>
+      <h2 id="tutorialChoiceTitle">要进行新手指引吗？</h2>
+      <p class="modal-lead">指引只带你完成本局的第一个我方回合：充能、升级、更换领队、进入战斗与结束回合。之后会恢复正常对局，不会改变卡牌、AI 或规则。</p>
+      <div class="modal-choice-actions">
+        <button id="startTutorialButton" class="primary-button" type="button">进入新手指引</button>
+        <button id="skipTutorialButton" class="secondary-button" type="button">跳过，正常开始</button>
+      </div>
+    </div>
+  </div>
+  <section id="tutorialHint" class="tutorial-hint hidden" aria-live="polite"></section>
+  <section id="tutorialExplainOverlay" class="tutorial-explain hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialExplainTitle">
+    <div class="tutorial-explain-card">
+      <p class="eyebrow">NEW PLAYER GUIDE</p>
+      <h2 id="tutorialExplainTitle">操作完成</h2>
+      <p id="tutorialExplainRule"></p>
+      <p id="tutorialExplainNext" class="tutorial-next"></p>
+      <button id="tutorialExplainConfirmButton" class="primary-button" type="button">确定，继续</button>
+    </div>
+  </section>
+  <div id="apiOnboardingOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="apiOnboardingTitle">
+    <div class="modal api-onboarding-modal">
+      <p class="eyebrow">DEEPSEEK OPTIONAL SETUP</p>
+      <h2 id="apiOnboardingTitle">配置 DeepSeek AI</h2>
+      <p class="modal-lead">填写 API Key 后可选择中级或高级 AI；跳过则使用初级本地 AI。你的 Key 不会展示在游戏界面或存档中。</p>
+      <label class="preset-select">DeepSeek API Key<input id="onboardingApiKeyInput" type="password" autocomplete="off" placeholder="sk-..." /></label>
+      <div class="modal-choice-actions">
+        <button id="onboardingSaveApiButton" class="primary-button" type="button">启用 DeepSeek</button>
+        <button id="onboardingSkipApiButton" class="secondary-button" type="button">先使用本地 AI</button>
+      </div>
+      <small>之后可在主菜单「设置」中更换 Key。</small>
+    </div>
+  </div>
+  <div id="setupOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="setupTitle">
+    <div class="modal setup-modal">
+      <p class="eyebrow">COIN TOSS // HIDDEN DEPLOYMENT</p>
+      <h2 id="setupTitle">选择我方领队</h2>
+      <p id="coinResult" class="modal-lead"></p><div id="initiativeChoices" class="initiative-choices"><button id="chooseFirstButton" class="secondary-button" type="button">选择先手</button><button id="chooseSecondButton" class="secondary-button" type="button">选择后手</button></div>
+      <p class="modal-lead">双方角色牌仍为盖放状态。你可以查看自己的三名角色，选择领队后双方同时翻开。</p>
+      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：可标记任意张换掉</p><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div>
+      <button id="mulliganButton" class="secondary-button wide" type="button">确认换牌（可不换）</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
+    </div>
+  </div>
+
+  <div id="responseOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="responseTitle">
+    <div class="modal combat-modal">
+      <p id="responseEyebrow" class="eyebrow">FACE-DOWN CONTEST</p>
+      <h2 id="responseTitle">对方进入战斗阶段</h2>
+      <p id="responseDetail" class="modal-lead"></p>
+      <div id="responseCards" class="response-cards"></div>
+      <button id="passDefenseButton" class="secondary-button wide" type="button">无可用手牌，直接判定</button>
+      <div class="modal-choice-actions">
+        <button id="confirmChoiceButton" class="primary-button hidden" type="button">确认</button>
+        <button id="cancelChoiceButton" class="secondary-button hidden" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="rulesOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <div class="modal rules-modal">
+      <button class="close-button" id="closeRulesButton" type="button" aria-label="关闭">×</button>
+      <p class="eyebrow">HOW TO PLAY</p>
+      <h2 id="rulesTitle">回响对决规则</h2>
+      <div class="rules-grid">
+        <article><b>01 // 胜负</b><p>双方 20 点生命，将对手降至 0 即胜利。</p></article>
+        <article><b>02 // 准备</b><p>抛硬币获胜方选择先手或后手；双方各抽 5 张、可各换牌一次，再同时翻开角色。</p></article>
+        <article><b>03 // 抽牌</b><p>先手首回合抽 1 张；此后每个回合的玩家默认抽 2 张。</p></article>
+        <article><b>04 // 主要</b><p>充能、升级、更换领队每回合各可做一次，彼此独立，也都可以不做。</p></article>
+        <article><b>05 // 战斗</b><p>可以跳过；进入时双方各盖 1 张手牌，同时翻开并按三类牌克制结算。</p></article>
+        <article><b>06 // 升级</b><p>选择任意角色，展示角色卡组中同名、同等级或高 1 级的角色卡；弃置与展示等级相同数量的手牌后叠放。</p></article>
+      </div>
+      <p class="disclaimer">本作为非商业同人规则原型；卡池和数值为本地版自制平衡内容。</p>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal gameover-modal">
+      <p class="eyebrow">DUEL COMPLETE</p>
+      <div class="result-glyph" id="resultGlyph">◇</div>
+      <h2 id="gameOverTitle">对局结束</h2>
+      <p id="gameOverDetail" class="modal-lead"></p>
+      <div id="gameOverStats" class="stats-grid compact-stats"></div>
+      <button id="playAgainButton" class="primary-button wide" type="button">再来一局</button>
+      <button id="backToMenuButton" class="secondary-button wide" type="button">返回主菜单</button>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="card-library/catalog.js"></script>
+  <script src="card-library/presets.js"></script>
+  <script src="core.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
