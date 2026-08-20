@@ -14,6 +14,21 @@
         <img class="brand-menu-logo" src="assets/menu/wuthering-waves-duel-logo.png" alt="鸣潮：对决" />
         <h1 class="sr-only">鸣潮：对决</h1>
       </div>
+      <section class="turn-card topbar-turn-card" aria-label="回合状态">
+        <div>
+          <p class="eyebrow">回合状态</p>
+          <div class="turn-number" id="turnNumber">01</div>
+        </div>
+        <div>
+          <p class="turn-owner" id="turnOwner">正在初始化</p>
+          <div class="phase-track">
+            <span class="phase" data-phase="draw">抽牌</span>
+            <span class="phase" data-phase="main">主要</span>
+            <span class="phase" data-phase="battle">战斗</span>
+            <span class="phase" data-phase="end">结束</span>
+          </div>
+        </div>
+      </section>
       <div class="top-actions">
         <button class="icon-btn" id="menuButton" type="button">主菜单</button>
         <button class="icon-btn" id="saveGameButton" type="button">保存对局</button>
@@ -33,21 +48,6 @@
       </aside>
 
       <section class="battlefield">
-        <section class="turn-card battlefield-turn-card" aria-label="回合状态">
-          <div>
-            <p class="eyebrow">回合状态</p>
-            <div class="turn-number" id="turnNumber">01</div>
-          </div>
-          <div>
-            <p class="turn-owner" id="turnOwner">正在初始化</p>
-            <div class="phase-track">
-              <span class="phase" data-phase="draw">抽牌</span>
-              <span class="phase" data-phase="main">主要</span>
-              <span class="phase" data-phase="battle">战斗</span>
-              <span class="phase" data-phase="end">结束</span>
-            </div>
-          </div>
-        </section>
         <div id="aiZone" class="player-zone opponent-zone"></div>
 
         <div class="arena-core">
@@ -146,7 +146,7 @@
       <h2 id="duelCodexTitle">卡牌图鉴</h2>
       <p class="modal-lead">浏览已收录卡牌。关闭右上角按钮后将直接回到当前对局。</p>
       <div class="codex-controls">
-        <label class="preset-select">卡牌类型<select id="duelCodexCategorySelect"><option value="all">全部卡牌</option><option value="角色牌">角色牌</option><option value="红色攻击">红色攻击</option><option value="绿色功能">绿色功能</option><option value="蓝色闪避">蓝色闪避</option><option value="领队技">领队技</option><option value="变奏技">变奏技</option><option value="共鸣技">共鸣技</option></select></label>
+        <label class="preset-select">卡牌类型<select id="duelCodexCategorySelect"><option value="all">全部卡牌</option><option value="character">角色牌</option><option value="blaze">红色牌</option><option value="verdant">绿色牌</option><option value="tide">蓝色牌</option></select></label>
         <label class="preset-select">卡牌<select id="duelCodexCardSelect"></select></label>
       </div>
       <div class="codex-detail">
@@ -214,25 +214,25 @@
           <button id="startGameButton" class="primary-button wide" type="button">开始游戏</button>
         </section>
         <section class="menu-page hidden deck-builder-page" id="menuDeckBuilderPanel">
-          <p class="modal-lead">拖拽右侧卡牌到左侧组牌区。角色按角色加入，自动包含 Lv.0–Lv.2；行动牌每种最多 3 张，行动牌总数须为 40 张。</p>
+          <p class="modal-lead">逐张拖拽右侧卡牌到左侧组牌区。角色卡需为 3–15 张、恰好 3 种角色且每种至少有 1 张 Lv.0；行动牌须恰好 40 张，每种最多 3 张。</p>
           <div class="deck-builder-layout">
             <section class="deck-builder-current" aria-labelledby="deckBuilderTitle">
-              <div class="deck-builder-heading"><div><p class="eyebrow">MY DECK</p><h3 id="deckBuilderTitle">未命名牌组</h3></div><span id="deckBuilderSummary" class="deck-builder-count">角色 0 / 3 · 行动 0 / 40</span></div>
-              <div id="deckBuilderRoles" class="deck-builder-zone role-zone" data-deck-drop="role"><p>角色牌区<br><small>拖入一名角色，自动加入 Lv.0–Lv.2</small></p></div>
+              <div class="deck-builder-heading"><div><p class="eyebrow">MY DECK</p><h3 id="deckBuilderTitle">未命名牌组</h3></div><span id="deckBuilderSummary" class="deck-builder-count">角色 0 / 3–15 · 种类 0 / 3 · 行动 0 / 40</span></div>
+              <div id="deckBuilderRoles" class="deck-builder-zone role-zone" data-deck-drop="role"><p>角色牌区<br><small>逐张拖入；同编号最多 1 张</small></p></div>
               <div id="deckBuilderActions" class="deck-builder-zone action-zone" data-deck-drop="action"><p>行动牌区<br><small>每种行动牌最多 3 张</small></p></div>
               <label class="preset-select">牌组名称<input id="customDeckNameInput" type="text" maxlength="20" placeholder="例如：炽霞快攻" /></label>
               <div class="deck-builder-save-row"><button id="saveCustomDeckButton" class="primary-button" type="button">保存牌组</button><button id="clearCustomDeckButton" class="secondary-button" type="button">清空当前组牌</button></div>
               <div id="customDeckSavedList" class="custom-deck-saved-list"></div>
             </section>
             <section class="deck-builder-library" aria-label="本地卡牌库">
-              <div class="deck-builder-filters"><label class="preset-select">类型<select id="deckBuilderFilter"><option value="all">全部卡牌</option><option value="角色">角色卡</option><option value="red">红色卡</option><option value="green">绿色卡</option><option value="blue">蓝色卡</option></select></label><span>每次拖入 1 张；重复拖入可增加数量</span></div>
+              <div class="deck-builder-filters"><label class="preset-select">类型<select id="deckBuilderFilter"><option value="all">全部卡牌</option><option value="角色">角色卡</option><option value="red">红色卡</option><option value="green">绿色卡</option><option value="blue">蓝色卡</option></select></label><label class="preset-select">属性<select id="deckBuilderAttributeFilter"><option value="all">全部属性</option></select></label><span>每次拖入 1 张；重复拖入可增加数量</span></div>
               <div id="deckBuilderLibrary" class="deck-builder-library-cards"></div>
               <div id="deckBuilderPreview" class="deck-builder-preview empty-hand">选择右侧卡牌查看卡面、数值与效果。</div>
             </section>
           </div>
         </section>
         <section class="menu-page hidden" id="menuLoadPanel">
-          <p class="modal-lead">加载本浏览器中保存的局内对局。每次保存会覆盖上一个存档。</p>
+          <p class="modal-lead">加载本浏览器中保存的局内对局。最多保留 3 个存档；保存时会优先使用空位，满位后再选择要覆盖的存档。</p>
           <div id="saveSlotInfo" class="save-slot empty-hand">暂无可加载的对局存档。</div>
           <button id="loadGameButton" class="primary-button wide" type="button" disabled>加载游戏</button>
           <button id="deleteSaveButton" class="secondary-button wide" type="button" disabled>删除存档</button>
@@ -250,7 +250,9 @@
         <section class="menu-page hidden" id="menuTestLabPanel">
           <p class="modal-lead">选择双方要测试的行动卡。系统会自动配置兼容领队、足够协奏费用和效果抽牌所需的测试牌库；测试不计入战绩，也不会覆盖存档。</p>
           <section class="test-lab-panel">
+            <label class="preset-select">我方卡牌类型<select id="testPlayerCategorySelect"><option value="all">全部卡牌</option><option value="character">角色牌</option><option value="blaze">红色牌</option><option value="verdant">绿色牌</option><option value="tide">蓝色牌</option></select></label><label class="preset-select">我方属性<select id="testPlayerAttributeSelect"><option value="all">全部属性</option></select></label>
             <label class="preset-select">我方行动卡<select id="testPlayerCardSelect"></select></label>
+            <label class="preset-select">对手卡牌类型<select id="testAiCategorySelect"><option value="all">全部卡牌</option><option value="character">角色牌</option><option value="blaze">红色牌</option><option value="verdant">绿色牌</option><option value="tide">蓝色牌</option></select></label><label class="preset-select">对手属性<select id="testAiAttributeSelect"><option value="all">全部属性</option></select></label>
             <label class="preset-select">AI 行动卡<select id="testAiCardSelect"></select></label>
             <div id="testLabPreview" class="test-lab-preview" aria-live="polite"></div>
             <p id="testLabHint" class="microcopy">选择后可直接进入战场；我方手牌仅保留所选卡，AI 会用所选卡响应。</p>
@@ -265,7 +267,7 @@
         <section class="menu-page hidden" id="menuCodexPanel">
           <p class="modal-lead">浏览已收录卡牌。先选择类型，再从下拉框选择具体卡牌。</p>
           <div class="codex-controls">
-            <label class="preset-select">卡牌类型<select id="codexCategorySelect"><option value="all">全部卡牌</option><option value="角色牌">角色牌</option><option value="红色攻击">红色攻击</option><option value="绿色功能">绿色功能</option><option value="蓝色闪避">蓝色闪避</option><option value="领队技">领队技</option><option value="变奏技">变奏技</option><option value="共鸣技">共鸣技</option></select></label>
+            <label class="preset-select">卡牌类型<select id="codexCategorySelect"><option value="all">全部卡牌</option><option value="character">角色牌</option><option value="blaze">红色牌</option><option value="verdant">绿色牌</option><option value="tide">蓝色牌</option></select></label><label class="preset-select">属性<select id="codexAttributeSelect"><option value="all">全部属性</option></select></label>
             <label class="preset-select">卡牌<select id="codexCardSelect"></select></label>
           </div>
           <div class="codex-detail">
@@ -318,8 +320,13 @@
       <p class="eyebrow">COIN TOSS // HIDDEN DEPLOYMENT</p>
       <h2 id="setupTitle">选择我方领队</h2>
       <p id="coinResult" class="modal-lead"></p><div id="initiativeChoices" class="initiative-choices"><button id="chooseFirstButton" class="secondary-button" type="button">选择先手</button><button id="chooseSecondButton" class="secondary-button" type="button">选择后手</button></div>
-      <p class="modal-lead">双方角色牌仍为盖放状态。你可以查看自己的三名角色，选择领队后双方同时翻开。</p>
-      <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：可标记任意张换掉</p><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div>
+      <div class="setup-selection-layout">
+        <div class="setup-selection-main">
+          <p class="modal-lead">双方角色牌仍为盖放状态。你可以查看自己的三名角色，选择领队后双方同时翻开。</p>
+          <div id="setupHeroes" class="setup-heroes"></div><p class="eyebrow">起始手牌：可标记任意张换掉</p><div id="setupMulliganCards" class="response-cards setup-mulligan-cards"></div>
+        </div>
+        <aside id="setupSelectionDetail" class="choice-effect-detail" aria-live="polite"></aside>
+      </div>
       <button id="mulliganButton" class="secondary-button wide" type="button">确认换牌（可不换）</button><button id="confirmSetupButton" class="primary-button wide" type="button">确认领队并翻开角色</button>
     </div>
   </div>
@@ -329,11 +336,32 @@
       <p id="responseEyebrow" class="eyebrow">FACE-DOWN CONTEST</p>
       <h2 id="responseTitle">对方进入战斗阶段</h2>
       <p id="responseDetail" class="modal-lead"></p>
-      <div id="responseCards" class="response-cards"></div>
+      <div class="response-selection-layout">
+        <div id="responseCards" class="response-cards"></div>
+        <aside id="responseSelectionDetail" class="choice-effect-detail" aria-live="polite"></aside>
+      </div>
       <button id="passDefenseButton" class="secondary-button wide" type="button">无可用手牌，直接判定</button>
       <div class="modal-choice-actions">
         <button id="confirmChoiceButton" class="primary-button hidden" type="button">确认</button>
         <button id="cancelChoiceButton" class="secondary-button hidden" type="button">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="actionSelectOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="actionSelectTitle">
+    <div class="modal action-select-modal">
+      <div id="actionSelectIntro" class="action-select-intro">
+        <p id="actionSelectEyebrow" class="eyebrow">ACTION SELECTION</p>
+        <h2 id="actionSelectTitle">选择行动</h2>
+        <p id="actionSelectDetail" class="modal-lead"></p>
+      </div>
+      <div class="action-select-browser">
+        <div id="actionSelectCards" class="action-select-cards" aria-live="polite"></div>
+        <aside id="actionSelectEffect" class="choice-effect-detail" aria-live="polite"></aside>
+      </div>
+      <div class="modal-choice-actions action-select-actions">
+        <button id="actionSelectConfirmButton" class="primary-button" type="button">确认</button>
+        <button id="actionSelectCancelButton" class="secondary-button" type="button">取消</button>
       </div>
     </div>
   </div>

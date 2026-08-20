@@ -1,0 +1,9 @@
+{
+  "name": "鸣潮：对决",
+  "short_name": "鸣潮对决",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#030914",
+  "theme_color": "#061214"
+}

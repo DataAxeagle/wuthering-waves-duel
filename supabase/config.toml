@@ -1,0 +1,23 @@
+project_id = "wuthering-waves-duel-pvp"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = []
+enable_anonymous_sign_ins = true
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
+
+[functions.pvp]
+verify_jwt = true

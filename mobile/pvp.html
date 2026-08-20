@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://pgxfrxrrcumavalbwqse.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://pgxfrxrrcumavalbwqse.supabase.co">
+  <link rel="preconnect" href="https://challenges.cloudflare.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <title>好友 PVP | 鸣潮：对决</title>
+  <link rel="stylesheet" href="pvp.css">
+</head>
+<body>
+  <main class="pvp-shell">
+    <header class="pvp-header">
+      <button class="ghost" type="button" onclick="location.href='index.html'">← 单人版</button>
+      <div><span>WUTHERING WAVES · DUEL</span><h1>好友 PVP</h1></div>
+      <strong id="connectionBadge">未连接</strong>
+    </header>
+
+    <section id="setupPanel" class="panel setup-panel">
+      <div class="setup-main">
+        <div>
+          <p class="eyebrow">PRIVATE ROOM</p>
+          <h2>创建或加入好友房</h2>
+          <p>无需注册账号。双方选择自己的预组或自组卡组，全部准备后进入对局。</p>
+        </div>
+        <div id="configWarning" class="warning hidden"></div>
+        <label>玩家名称<input id="displayNameInput" maxlength="16" autocomplete="nickname" placeholder="请输入名称"></label>
+        <div class="turnstile-control">
+          <div id="turnstileSlot" class="turnstile-slot"></div>
+          <div class="turnstile-feedback">
+            <span id="turnstileStatus" class="turnstile-status" data-state="loading" role="status">正在加载人机验证……</span>
+            <button id="turnstileRetryButton" class="secondary turnstile-retry hidden" type="button">重新加载验证</button>
+          </div>
+        </div>
+      </div>
+      <div class="join-grid">
+        <button id="createRoomButton" class="primary" type="button" disabled>创建房间</button>
+        <label>房间号<input id="roomCodeInput" maxlength="6" autocomplete="one-time-code" placeholder="ABC234"></label>
+        <button id="joinRoomButton" class="secondary" type="button" disabled>加入房间</button>
+      </div>
+    </section>
+
+    <section id="lobbyPanel" class="panel hidden">
+      <div class="room-heading"><div><p class="eyebrow">ROOM CODE</p><h2 id="roomCodeLabel">------</h2></div><button id="copyInviteButton" class="secondary" type="button">复制邀请链接</button></div>
+      <div id="memberList" class="member-list"></div>
+      <label>本局卡组<select id="deckSelect"></select></label>
+      <div class="button-row"><button id="readyButton" class="primary" type="button">准备</button><button id="leaveButton" class="danger" type="button">离开/认输</button></div>
+      <p id="lobbyHint" class="muted">等待另一位玩家加入。</p>
+    </section>
+
+  </main>
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
+  <script src="card-library/catalog.js"></script>
+  <script src="card-library/presets.js"></script>
+  <script src="core.js"></script>
+  <script src="pvp-config.js"></script>
+  <script src="pvp.js"></script>
+</body>
+</html>

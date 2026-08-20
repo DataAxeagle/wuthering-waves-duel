@@ -15,13 +15,12 @@
 
 玩家名称、战绩、局内存档和自组卡组保存在当前 Windows 用户资料中；API Key 单独保存在 Windows 凭据管理器。更新或覆盖分享包不会清空这些资料。
 
-## v1.5 重点更新
+## v1.6 重点更新
 
-- 自组卡组已加入 Windows 用户资料同步：换端口、换分享包或覆盖更新后会自动恢复；兼容旧版浏览器存储的首次迁移。
-- 新增实体卡背素材，并统一应用于行动牌库、弃牌区、角色牌库、暗置角色、中央盖牌、对抗与抽卡动画。
-- 牌库、弃牌区与角色牌库的数量信息移至卡背下方；弃牌堆新增悬停/键盘聚焦反馈。
-- 修复新手导览高亮牌库时的定位错位。
-- 分享包新增覆盖安装说明，明确保留 AI 决策记录、Windows 用户资料和旧版自组卡组迁移步骤。
+- 电脑端修复 AI 在盖牌、行动、动画或追击阶段异常后可能残留锁定状态的问题；异常时会安全结束 AI 追击并恢复调度。
+- 当前桌面分享包与稳定 EXE 均使用同一套 201 文件 `app/` 基线，并包含新增的 8 张角色牌图片。
+- 自组卡组、玩家资料、战绩和局内存档继续保存在 Windows 用户资料中；覆盖更新不会清空。
+- 手机版源码新增 60 张卡库、角色延迟触发与 Supabase 权威 PVP 房间模式；线上部署与双设备联调仍需单独完成。
 
 ## 游戏功能
 
@@ -55,6 +54,16 @@ node --test .\tests\card-library.test.cjs
 
 离线规则 AI 可直接打开 `demo/index.html`。需要 DeepSeek AI 时，运行 `启动游戏.cmd` 或在 PowerShell 设置 `DEEPSEEK_API_KEY` 后执行 `run-deepseek-game.ps1`。
 
+## 本地目录与发布包
+
+- `assets/`：原始卡面和输入素材；不参与运行时加载，也不提交到公开仓库。
+- `packaging/desktop-exe/`：桌面 EXE 的封装开发项目；请勿将其与稳定交付包混用。
+- `releases/stable-desktop/`：已验证稳定桌面版。
+- `releases/share-packages/desktop/builds/`：桌面分享包；运行 `打包分享版.ps1` 会在此生成带时间戳的目录和 ZIP。
+- `releases/share-packages/mobile/builds/` 与 `releases/share-packages/mobile/archive/`：手机版构建包和按日期归档副本。
+- `archives/`：备份与修改前快照，只用于回溯，不是可运行的当前版本。
+- `output/`：临时测试和一次性导出，不保存对外安装包。
+
 ## AI 与数据边界
 
 - 服务端仅向 DeepSeek 发送 AI 自己的手牌与双方公开局面；不会发送玩家隐藏手牌或已盖卡内容。
@@ -65,5 +74,5 @@ node --test .\tests\card-library.test.cjs
 ## 仓库与素材
 
 - 源码采用 [MIT License](LICENSE)，仅覆盖本仓库代码，不授予《鸣潮》名称、商标、角色与世界观的使用权。
-- Release 附件提供 Windows 分享包；`output/` 和原始采集素材不提交到仓库。
+- Release 附件提供 Windows 分享包；`releases/`、`archives/`、`output/`、桌面封装构建产物和原始采集素材不提交到仓库。
 - 已收录卡牌与素材说明见 `demo/card-library/README.md`。

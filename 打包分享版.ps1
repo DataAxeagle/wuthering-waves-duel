@@ -5,12 +5,13 @@ $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSCommandPath
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $packageName = "鸣潮对决-分享版-$stamp"
-$outputRoot = Join-Path $ProjectRoot 'output'
-$packagePath = Join-Path $outputRoot $packageName
-$zipPath = Join-Path $outputRoot ($packageName + '.zip')
+$releaseRoot = Join-Path $ProjectRoot 'releases\share-packages\desktop\builds'
+$packagePath = Join-Path $releaseRoot $packageName
+$zipPath = Join-Path $releaseRoot ($packageName + '.zip')
 $gameFilesPath = Join-Path $packagePath 'app'
 $node = (Get-Command node.exe -ErrorAction Stop).Source
 
+New-Item -ItemType Directory -Path $releaseRoot -Force | Out-Null
 New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
 New-Item -ItemType Directory -Path $gameFilesPath -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $packagePath 'AI决策记录') -Force | Out-Null

@@ -216,7 +216,7 @@ function callDeepSeek(payload) {
         "Content-Type": "application/json",
         "Content-Length": Buffer.byteLength(requestBody),
       },
-      timeout: 20000,
+      timeout: 10000,
     }, (apiResponse) => {
       const chunks = [];
       apiResponse.on("data", (chunk) => chunks.push(chunk));

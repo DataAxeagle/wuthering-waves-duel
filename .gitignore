@@ -1,9 +1,15 @@
-# Distribution artifacts and raw source material
+# Distribution artifacts, archives, and raw source material
 output/
-卡牌素材/
-输入素材/
+assets/
+archives/
+releases/
+packaging/desktop-exe/
 backups/
-桌面EXE版/
+AI决策记录/
+.tmp-npm-cache/
+.wrangler/
+supabase/.temp/
+交接文档/
 demo/demo/
 changes/changes/
 rules/rules/

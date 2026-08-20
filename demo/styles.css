@@ -326,6 +326,18 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .discard-pair .card { margin: 0; }
 .animation-layer.discard-animation.animating .discard-pair > div:first-child { transform: translate(-280px, 80px) scale(.3) rotate(-16deg); opacity: .08; }
 .animation-layer.discard-animation.animating .discard-pair > div:last-child { transform: translate(280px, -80px) scale(.3) rotate(16deg); opacity: .08; }
+.round-transition-scene { position: relative; width: min(940px, calc(100vw - 42px)); opacity: 0; transform: scale(.88); filter: blur(6px); transition: opacity .24s ease, transform .45s cubic-bezier(.15,.85,.24,1), filter .28s ease; }
+.round-transition-frame { display: block; width: 100%; filter: drop-shadow(0 0 26px rgba(83,239,205,.24)); }
+.round-transition-copy { position: absolute; inset: 28% 22% 26%; display: grid; place-content: center; gap: 5px; padding: 12px 22px; background: radial-gradient(ellipse, rgba(5,20,23,.98) 45%, rgba(5,20,23,.88) 72%, transparent); color: #f0fffa; text-align: center; text-shadow: 0 0 13px rgba(90,244,201,.38), 0 3px 5px rgba(0,0,0,.78); }
+.round-transition-copy p { margin: 0; color: #a4efdc; font: 700 clamp(10px, 1.4vw, 17px)/1 Consolas, monospace; letter-spacing: .24em; }
+.round-transition-copy h2 { margin: 0; font: 800 clamp(28px, 5.1vw, 66px)/1.12 "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif; letter-spacing: .1em; white-space: nowrap; }
+.round-transition-copy b { color: #9cebd8; font: 600 clamp(13px, 2vw, 25px)/1.2 "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif; letter-spacing: .22em; }
+.animation-layer.round-transition-animation.animating .round-transition-scene { opacity: 1; transform: scale(1); filter: blur(0); animation: round-transition-exit .42s ease 1.36s forwards; }
+@keyframes round-transition-exit { to { opacity: 0; transform: scale(1.045); filter: blur(3px); } }
+.pursuit-guided { position: relative; border-color: #58bfff !important; box-shadow: 0 0 0 2px rgba(91,191,255,.92), 0 0 22px rgba(54,163,255,.72), inset 0 0 16px rgba(78,174,255,.14) !important; animation: pursuit-guidance-pulse 1s ease-in-out infinite; }
+.pursuit-guided:disabled { opacity: 1; filter: none; }
+@keyframes pursuit-guidance-pulse { 50% { box-shadow: 0 0 0 4px rgba(116,206,255,.35), 0 0 34px rgba(54,163,255,.94), inset 0 0 22px rgba(78,174,255,.23); } }
+@media (max-width: 620px) { .round-transition-scene { width: min(700px, calc(100vw - 20px)); } .round-transition-copy { inset: 25% 15% 23%; } }
 .player-zone.damage-hit { animation: damageShake .72s ease; }
 .player-zone.damage-hit::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle, rgba(255,84,72,.32), transparent 60%); pointer-events: none; animation: damageFlash .9s ease forwards; }
 .damage-number { position: absolute; z-index: 20; left: 50%; top: 42%; color: #ff675d; font: 900 54px Consolas, monospace; text-shadow: 0 0 25px rgba(255,55,45,.8); animation: damageNumber 1.1s ease forwards; }
@@ -344,11 +356,11 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 #responseOverlay[data-utility-mode="view-hand"] .response-cards { flex: 0 1 auto; justify-content: center; align-items: flex-start; min-height: 0; max-height: min(48dvh, 390px); }
 #responseOverlay[data-utility-mode="view-hand"] .modal-choice-actions { position: relative; flex: 0 0 auto; min-height: 0; margin: 0; padding: 10px 0 2px; background: transparent; }
 #responseOverlay[data-utility-mode="view-hand"] #confirmChoiceButton:not([hidden]) { display: block; grid-column: 1 / -1; min-height: 46px; font-size: 14px; }
-#responseOverlay[data-utility-mode="effect-discard"] { place-items: center; padding: 24px; background: rgba(0, 6, 10, .66); backdrop-filter: blur(5px); pointer-events: auto; }
-#responseOverlay[data-utility-mode="effect-discard"] .combat-modal { width: min(820px, 94vw); max-height: calc(100dvh - 48px); padding: 18px 22px 20px; }
-#responseOverlay[data-utility-mode="effect-discard"] .response-cards { flex: 1 1 auto; justify-content: center; align-items: flex-start; min-height: 150px; max-height: min(46dvh, 380px); padding: 10px 6px; }
-#responseOverlay[data-utility-mode="effect-discard"] .modal-choice-actions { position: relative; flex: 0 0 auto; display: grid; grid-template-columns: 1fr; margin-top: 8px; padding: 12px 0 0; background: rgba(7,24,26,.98); }
-#responseOverlay[data-utility-mode="effect-discard"] #confirmChoiceButton:not([hidden]) { display: block; min-height: 52px; font-size: 16px; }
+#responseOverlay[data-utility-mode="effect-discard"], #responseOverlay[data-utility-mode="discard-recovery"] { place-items: center; padding: 24px; background: rgba(0, 6, 10, .66); backdrop-filter: blur(5px); pointer-events: auto; }
+#responseOverlay[data-utility-mode="effect-discard"] .combat-modal, #responseOverlay[data-utility-mode="discard-recovery"] .combat-modal { width: min(820px, 94vw); max-height: calc(100dvh - 48px); padding: 18px 22px 20px; }
+#responseOverlay[data-utility-mode="effect-discard"] .response-cards, #responseOverlay[data-utility-mode="discard-recovery"] .response-cards { flex: 1 1 auto; justify-content: center; align-items: flex-start; min-height: 150px; max-height: min(46dvh, 380px); padding: 10px 6px; }
+#responseOverlay[data-utility-mode="effect-discard"] .modal-choice-actions, #responseOverlay[data-utility-mode="discard-recovery"] .modal-choice-actions { position: relative; flex: 0 0 auto; display: grid; grid-template-columns: 1fr; margin-top: 8px; padding: 12px 0 0; background: rgba(7,24,26,.98); }
+#responseOverlay[data-utility-mode="effect-discard"] #confirmChoiceButton:not([hidden]), #responseOverlay[data-utility-mode="discard-recovery"] #confirmChoiceButton:not([hidden]) { display: block; min-height: 52px; font-size: 16px; }
 #responseOverlay[data-utility-mode="contest-response"] { place-items: center; padding: 24px; background: rgba(0, 6, 10, .66); backdrop-filter: blur(5px); pointer-events: auto; }
 #responseOverlay[data-utility-mode="contest-response"] .combat-modal { width: min(820px, 94vw); max-height: calc(100dvh - 48px); padding: 18px 22px 20px; }
 #responseOverlay[data-utility-mode="contest-response"] .response-cards { flex: 1 1 auto; justify-content: center; align-items: flex-start; min-height: 150px; max-height: min(46dvh, 380px); padding: 10px 6px; }
@@ -474,7 +486,13 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .menu-entry.danger b { color: #e98787; }
 .menu-page { min-height: 390px; padding: 3px 4px; }
 .menu-page.hidden { display: none; }
-.save-slot { min-height: 76px; margin: 20px 0; padding: 18px; border: 1px solid rgba(144,214,203,.28); background: rgba(5,22,27,.64); color: var(--text); line-height: 1.6; }
+.save-slot { display: grid; gap: 8px; min-height: 76px; margin: 20px 0; padding: 12px; border: 1px solid rgba(144,214,203,.28); background: rgba(5,22,27,.64); color: var(--text); line-height: 1.6; }
+.save-slot-entry { display: grid; grid-template-columns: 94px 1fr; align-items: center; gap: 10px; width: 100%; padding: 12px; border: 1px solid rgba(144,214,203,.24); color: var(--text); background: rgba(7,29,34,.72); font: inherit; text-align: left; cursor: pointer; }
+.save-slot-entry b { color: var(--gold); }
+.save-slot-entry span { color: var(--muted); font-size: 13px; }
+.save-slot-entry:hover, .save-slot-entry.selected { border-color: var(--mint); background: rgba(53,132,128,.2); box-shadow: inset 3px 0 0 var(--mint); }
+.save-slot-entry.empty { cursor: default; opacity: .56; }
+.save-slot-entry.empty:hover { border-color: rgba(144,214,203,.24); background: rgba(7,29,34,.72); box-shadow: none; }
 .menu-page .wide + .wide { margin-top: 10px; }
 .preset-select input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid rgba(144,214,203,.32); color: var(--text); background: rgba(4,18,28,.88); font: inherit; }
 .exit-screen { min-height: 100vh; display: grid; place-content: center; gap: 12px; padding: 30px; color: var(--text); text-align: center; background: #061216; }
@@ -778,6 +796,16 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .menu-page { min-height: 0; max-height: calc(100svh - 142px); overflow-y: auto; padding: clamp(22px, 3vw, 36px); border: 1px solid rgba(193,231,255,.36); border-radius: 2px; background: rgba(5,22,49,.80); box-shadow: 0 5px 32px rgba(0,0,0,.4); backdrop-filter: blur(9px); }
 .menu-page .modal-lead { color: #d5e9fb; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; }
 .menu-cover-version { position: fixed; bottom: 26px; left: 50%; margin: 0; transform: translateX(-50%); color: rgba(216,235,255,.58); font: 10px/1 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; letter-spacing: .16em; white-space: nowrap; }
+/* 首页封面在桌面默认缩放下提高可读性，不影响其余菜单页和对局界面。 */
+@media (min-width: 561px) {
+  .menu-cover-content { width: min(760px, calc(100% - 96px)); }
+  .menu-cover-eyebrow { margin-bottom: 16px; font-size: 14px; }
+  .menu-cover-logo { width: min(430px, 78vw); }
+  .menu-cover-subtitle { margin: 28px 0 34px; font-size: clamp(16px, 1.55vw, 21px); }
+  .menu-cover-actions { gap: 13px 15px; width: min(680px, 100%); }
+  .menu-cover-primary, .menu-cover-secondary { min-height: 54px; padding: 0 25px; font-size: 16px; }
+  .menu-cover-primary { min-width: 210px; }
+}
 @media (max-width: 560px) {
   .menu-cover-content { top: 49%; left: 30px; width: calc(100% - 60px); }
   .menu-cover-logo { width: min(330px, 94vw); margin-left: -21px; }
@@ -1002,10 +1030,125 @@ button:focus-visible, .card:focus-visible, .hero-card:focus-visible { outline: 2
 .resource-left-stack .role-deck-button { display: block; }
 .discard-stack { transition: transform .18s ease, filter .18s ease, box-shadow .18s ease; cursor: pointer; }
 .discard-stack:hover, .discard-stack:focus-visible { transform: translateY(-6px) scale(1.1); filter: brightness(1.13); box-shadow: 5px 9px 0 rgba(80,62,37,.38), 0 13px 26px rgba(0,0,0,.48), 0 0 18px rgba(235,223,174,.24); }
+
+/* 弹窗选牌统一采用“完整卡面 + 右侧效果”的稳定布局。 */
+.choice-effect-detail { display: grid; grid-template-columns: 128px minmax(0, 1fr); align-content: start; gap: 14px; min-height: 220px; padding: 16px; border-left: 2px solid var(--gold); background: rgba(3, 15, 21, .72); overflow-y: auto; text-align: left; }
+.choice-effect-detail > img { width: 100%; max-height: 220px; object-fit: contain; background: #050b0c; }
+.choice-effect-detail h3 { margin: 4px 0 8px; color: #fff2cf; font-size: 21px; }
+.choice-effect-detail small, .choice-effect-detail b { display: block; }
+.choice-effect-detail small { color: #e4ca90; line-height: 1.55; }
+.choice-effect-detail b { margin-top: 10px; color: var(--mint); font-size: 12px; line-height: 1.55; }
+.choice-effect-detail p:not(.eyebrow) { margin: 8px 0 0; color: #d2e0dc; font-size: 13px; line-height: 1.7; }
+.choice-effect-empty { grid-column: 1 / -1; display: grid; place-content: center; min-height: 176px; color: var(--muted); text-align: center; }
+.choice-effect-empty span { color: var(--gold); font-size: 34px; }
+
+.action-select-browser { display: grid; flex: 1 1 auto; grid-template-columns: minmax(0, 1fr) minmax(290px, .44fr); min-height: 0; overflow: hidden; }
+.action-select-browser .choice-effect-detail { min-height: 0; }
+.action-select-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 176px)); justify-content: center; align-content: start; min-height: 290px; overflow-y: auto; overflow-x: hidden; }
+.action-select-cards .action-choice-heroes { grid-column: 1 / -1; }
+
+/* 对抗盖牌由横向单行改成网格，任何一张牌都不会被裁成半张。 */
+.response-selection-layout { display: grid; flex: 1 1 auto; grid-template-columns: minmax(0, 1fr) minmax(280px, .4fr); min-height: 0; overflow: hidden; }
+#responseOverlay[data-utility-mode="contest-response"] .combat-modal, #responseOverlay[data-utility-mode="effect-discard"] .combat-modal, #responseOverlay[data-utility-mode="discard-recovery"] .combat-modal { width: min(1240px, 95vw); }
+#responseOverlay[data-utility-mode="contest-response"] .response-cards, #responseOverlay[data-utility-mode="effect-discard"] .response-cards, #responseOverlay[data-utility-mode="discard-recovery"] .response-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 176px)); justify-content: center; align-content: start; gap: 18px; max-height: none; min-height: 0; padding: 14px 10px; overflow-y: auto; overflow-x: hidden; }
+#responseOverlay[data-utility-mode="contest-response"] .response-cards .card, #responseOverlay[data-utility-mode="effect-discard"] .response-cards .card, #responseOverlay[data-utility-mode="discard-recovery"] .response-cards .card { width: 176px; height: 246px; }
+#responseOverlay[data-utility-mode="contest-response"] .choice-effect-detail, #responseOverlay[data-utility-mode="effect-discard"] .choice-effect-detail, #responseOverlay[data-utility-mode="discard-recovery"] .choice-effect-detail { min-height: 0; }
+
+/* 开局领队与换牌共用同一块效果说明栏。 */
+.setup-modal { width: min(1180px, 95vw); text-align: left; }
+.setup-selection-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(290px, .42fr); gap: 16px; min-height: 0; margin: 8px 0 12px; }
+.setup-selection-main { min-width: 0; text-align: center; }
+.setup-selection-layout .choice-effect-detail { min-height: 0; max-height: 460px; }
+
+/* 左侧角色牌库/弃牌库缩略图完整显示；过长时只滚动左侧列表。 */
+.role-deck-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); overflow-y: auto; overflow-x: hidden; }
+.role-deck-card { grid-template-rows: auto auto; }
+.role-deck-card img, .role-deck-card i { width: 100%; height: auto; aspect-ratio: 2 / 3; object-fit: contain; object-position: center; background: #050b0c; }
+
+/* 主动操作统一由大卡弹窗承接，避免场地中的手牌与说明面板互相遮挡。 */
+#actionSelectOverlay { place-items: center; padding: 24px; background: rgba(0, 6, 10, .7); backdrop-filter: blur(6px); }
+#actionSelectOverlay .action-select-modal { width: min(1120px, 95vw); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; padding: 22px 28px 24px; overflow: hidden; }
+#actionSelectOverlay .modal-lead { margin: 4px 0 12px; }
+.action-select-cards { display: flex; flex: 1 1 auto; justify-content: center; align-items: flex-start; gap: 22px; min-height: 290px; padding: 16px 12px 20px; overflow: auto; }
+.action-select-cards .card { flex: 0 0 176px; width: 176px; height: 246px; margin: 0; }
+.action-select-cards .card-face-image { object-fit: cover; }
+.action-select-cards .empty-choice { align-self: center; color: var(--muted); }
+.action-choice-heroes { display: flex; justify-content: center; align-items: flex-start; gap: 34px; width: 100%; padding: 6px 12px; }
+.action-choice-heroes .hero-card { flex: 0 0 auto; width: 188px; height: 264px; margin: 0; }
+.action-select-actions { position: relative; flex: 0 0 auto; width: min(520px, 100%); margin: 0 auto; padding-top: 14px; background: transparent; }
+
+/* 对方进入战斗时，同样以居中的大卡弹窗让玩家选择盖放手牌。 */
+#responseOverlay[data-utility-mode="contest-response"] .response-cards { gap: 20px; min-height: 270px; max-height: min(54dvh, 470px); padding: 16px 10px; }
+#responseOverlay[data-utility-mode="contest-response"] .response-cards .card { flex: 0 0 176px; width: 176px; height: 246px; margin: 0; }
+
+/* 战斗展示保留卡牌主体，效果的文字说明固定放在右侧。 */
+.battle-showcase-scene { width: min(980px, 94vw); }
+.battle-showcase-layout { display: grid; grid-template-columns: minmax(330px, 1fr) minmax(260px, .8fr); align-items: center; gap: 26px; text-align: left; }
+.battle-showcase-layout .battle-showcase-cards { min-height: 302px; }
+.battle-showcase-detail { min-height: 230px; padding: 18px; border: 1px solid rgba(224,187,104,.48); background: rgba(0,0,0,.26); text-align: left; }
+.battle-showcase-detail .eyebrow { margin: 0 0 12px; color: var(--gold); }
+.battle-showcase-detail section + section { margin-top: 13px; padding-top: 13px; border-top: 1px solid rgba(180,220,205,.15); }
+.battle-showcase-detail strong, .battle-showcase-detail b { display: block; }
+.battle-showcase-detail strong { color: #fff4cf; font-size: 16px; }
+.battle-showcase-detail b { margin-top: 7px; color: var(--mint); font-size: 12px; line-height: 1.55; }
+.battle-showcase-detail p:not(.eyebrow) { margin: 8px 0 0; color: #b8c7c3; font-size: 12px; line-height: 1.65; }
+.role-effect-layout { grid-template-columns: minmax(220px, .62fr) minmax(360px, 1fr); max-width: 760px; margin: 0 auto; }
+.role-effect-layout .role-effect-card { display: flex; align-items: center; justify-content: center; min-height: 270px; }
+.role-effect-layout .role-effect-card .card { flex: 0 0 auto; width: 172px; height: 242px; margin: 0; pointer-events: none; }
+
 @media (max-width: 720px) {
   .pile-group { gap: 8px; }
   .pile-slot, .role-deck-slot { gap: 4px; }
   .pile-caption { font-size: 7px; }
   .role-deck-slot { width: 44px; }
   .discard-stack:hover, .discard-stack:focus-visible { transform: translateY(-4px) scale(1.07); }
+  #actionSelectOverlay { padding: 12px; }
+  #actionSelectOverlay .action-select-modal { width: 96vw; max-height: calc(100dvh - 24px); padding: 18px 16px; }
+  .action-select-browser, .response-selection-layout, .setup-selection-layout { grid-template-columns: 1fr; overflow-y: auto; }
+  .action-select-cards { grid-template-columns: repeat(auto-fit, minmax(124px, 132px)); justify-content: center; min-height: 220px; gap: 14px; padding: 10px 4px 16px; overflow: visible; }
+  .action-select-cards .card { flex-basis: 132px; width: 132px; height: 184px; }
+  .action-choice-heroes { justify-content: flex-start; gap: 16px; }
+  .action-choice-heroes .hero-card { width: 142px; height: 198px; }
+  .battle-showcase-layout { grid-template-columns: 1fr; gap: 12px; }
+  .battle-showcase-layout .battle-showcase-cards { min-height: 230px; }
+  .battle-showcase-detail { min-height: 0; }
+  .choice-effect-detail { grid-template-columns: 96px minmax(0, 1fr); min-height: 0; max-height: none; border-left: 0; border-top: 2px solid var(--gold); }
+  .choice-effect-detail > img { max-height: 170px; }
+  #responseOverlay[data-utility-mode="contest-response"] .response-cards, #responseOverlay[data-utility-mode="effect-discard"] .response-cards, #responseOverlay[data-utility-mode="discard-recovery"] .response-cards { grid-template-columns: repeat(auto-fit, minmax(124px, 132px)); max-height: none; overflow: visible; }
+  #responseOverlay[data-utility-mode="contest-response"] .response-cards .card, #responseOverlay[data-utility-mode="effect-discard"] .response-cards .card, #responseOverlay[data-utility-mode="discard-recovery"] .response-cards .card { width: 132px; height: 184px; }
+  .setup-selection-layout .choice-effect-detail { max-height: none; }
+}
+
+/* 最终弹窗排版：必须覆盖早期横向 flex，避免首尾卡牌和滚动条被裁切。 */
+#actionSelectOverlay .action-select-browser { display: grid; grid-template-columns: minmax(0, 1fr) minmax(360px, .5fr); overflow: hidden; }
+#actionSelectOverlay .action-select-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(164px, 176px)); justify-content: center; align-content: start; gap: 18px; min-height: 0; padding: 16px 14px 22px; overflow-y: auto; overflow-x: hidden; }
+#actionSelectOverlay .action-select-cards .card { width: 176px; height: 246px; margin: 0; }
+#actionSelectOverlay .action-select-cards .card-face-image { object-fit: contain; }
+#actionSelectOverlay .action-choice-heroes { display: flex; grid-column: 1 / -1; justify-content: center; align-items: flex-start; gap: 34px; width: 100%; padding: 6px 12px; }
+#actionSelectOverlay .action-choice-heroes .hero-card { flex: 0 0 auto; width: 216px; height: 303px; margin: 0; }
+.action-select-intro { min-width: 0; }
+
+/* 回合状态与 Logo、主菜单同列；战场恢复为敌我/中央三行。 */
+.topbar { flex-basis: 96px; height: 96px; display: grid; grid-template-columns: minmax(180px, 1fr) minmax(520px, 760px) minmax(250px, 1fr); gap: 18px; }
+.top-actions { justify-self: end; }
+.topbar-turn-card { display: grid; grid-template-columns: 68px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 0; margin: 0; padding: 8px 14px; border: 1px solid var(--line-bright); background: rgba(8,27,29,.9); box-shadow: inset 0 0 28px rgba(76,177,155,.07); }
+.topbar-turn-card .turn-number { margin: 1px 0 0; font-size: 30px; }
+.topbar-turn-card .turn-owner { margin: 0 0 6px; font-size: 12px; }
+.topbar-turn-card .phase-track { max-width: none; }
+.battlefield { grid-template-rows: minmax(0, 1fr) clamp(88px, 14dvh, 122px) minmax(0, 1fr); padding-top: 8px; }
+
+@media (max-width: 1050px) {
+  .topbar { grid-template-columns: minmax(150px, .7fr) minmax(430px, 1.5fr) auto; gap: 10px; }
+  .topbar-turn-card { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 7px 10px; }
+  .topbar-turn-card .turn-number { font-size: 24px; }
+}
+@media (max-width: 720px) {
+  .topbar { height: auto; min-height: 96px; grid-template-columns: 1fr auto; }
+  .topbar-turn-card { grid-column: 1 / -1; grid-row: 2; order: 3; }
+  .top-actions { grid-column: 2; grid-row: 1; }
+  #actionSelectOverlay .action-select-browser { grid-template-columns: 1fr; overflow-y: auto; }
+  #actionSelectOverlay .action-select-cards { grid-template-columns: repeat(auto-fit, minmax(124px, 132px)); padding: 10px 4px 16px; overflow: visible; }
+  #actionSelectOverlay .action-select-cards .card { width: 132px; height: 184px; }
+  #actionSelectOverlay .action-choice-heroes { justify-content: center; gap: 16px; }
+  #actionSelectOverlay .action-choice-heroes .hero-card { width: 142px; height: 198px; }
 }

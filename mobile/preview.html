@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>鸣潮：对决 · iPhone 横屏预览</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; background: #050a12; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; overflow: auto; background: radial-gradient(circle at 50% 42%, #122c43, #050a12 70%); }
+    main { display: grid; gap: 12px; justify-items: center; padding: 24px; }
+    .preview-label { display: flex; align-items: center; gap: 10px; color: #d7f5ef; font-size: 12px; letter-spacing: .08em; }
+    .preview-label a { color: #9df0db; }
+    iframe { width: 844px; height: 390px; border: 1px solid rgba(157, 222, 211, .38); border-radius: 20px; background: #020a12; box-shadow: 0 28px 90px rgba(0, 0, 0, .65), 0 0 0 10px rgba(255, 255, 255, .035); }
+    @media (max-width: 900px) { body { place-items: start center; } main { width: 100%; padding: 12px 0; transform-origin: top center; transform: scale(.92); } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="preview-label">iPhone 15 Pro · 横屏 844 × 390 <a href="index.html">打开普通页面</a></div>
+    <iframe src="index.html?preview=iphone15pro&amp;embed=1" title="鸣潮对决 iPhone 15 Pro 横屏真实预览" allow="autoplay"></iframe>
+  </main>
+</body>
+</html>
