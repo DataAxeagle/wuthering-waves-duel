@@ -16,6 +16,35 @@ New-Item -ItemType Directory -Path $packagePath -Force | Out-Null
 New-Item -ItemType Directory -Path $gameFilesPath -Force | Out-Null
 New-Item -ItemType Directory -Path (Join-Path $packagePath 'AI决策记录') -Force | Out-Null
 Copy-Item -LiteralPath (Join-Path $ProjectRoot 'demo') -Destination (Join-Path $gameFilesPath 'demo') -Recurse
+$stagedDemo = Join-Path $gameFilesPath 'demo'
+$stagedNestedDemo = Join-Path $stagedDemo 'demo'
+$nestedDemoStaged = Test-Path -LiteralPath $stagedNestedDemo
+if ($nestedDemoStaged) {
+  Remove-Item -LiteralPath $stagedNestedDemo -Recurse -Force
+}
+$stagedCardArt = Join-Path $stagedDemo 'card-library\art'
+$mobileCardArt = Join-Path $ProjectRoot 'mobile\card-library\art'
+
+# 这些展示备用图在桌面 HTML 中没有引用；源码保留，分享包不携带。
+foreach ($relative in @('assets\actions', 'assets\heroes')) {
+  $unusedAssetPath = Join-Path $stagedDemo $relative
+  if (Test-Path -LiteralPath $unusedAssetPath) { Remove-Item -LiteralPath $unusedAssetPath -Recurse -Force }
+}
+Get-ChildItem -LiteralPath $mobileCardArt -Recurse -Filter '*.webp' -File | ForEach-Object {
+  $relative = $_.FullName.Substring($mobileCardArt.Length).TrimStart('\')
+  $target = Join-Path $stagedCardArt $relative
+  New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
+  Copy-Item -LiteralPath $_.FullName -Destination $target -Force
+}
+$catalogPath = Join-Path $stagedDemo 'card-library\catalog.js'
+$catalogSource = Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8
+$catalogSource = $catalogSource -replace '(art/[^"''\r\n]+)\.png', '$1.webp'
+[System.IO.File]::WriteAllText($catalogPath, $catalogSource, [System.Text.UTF8Encoding]::new($true))
+Get-ChildItem -LiteralPath $stagedCardArt -Recurse -Filter '*.png' -File | Remove-Item -Force
+
+# `demo/demo/` 是历史嵌套副本，当前桌面入口与脚本均不引用；不带入分享包。
+$nestedDemo = Join-Path $stagedDemo 'demo'
+if (Test-Path -LiteralPath $nestedDemo) { Remove-Item -LiteralPath $nestedDemo -Recurse -Force }
 foreach ($file in @('server.js', 'launcher.ps1')) {
   Copy-Item -LiteralPath (Join-Path $ProjectRoot $file) -Destination (Join-Path $gameFilesPath $file)
 }

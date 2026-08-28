@@ -8,7 +8,7 @@ const viewports = [[1440, 900], [1280, 720], [1050, 720], [1024, 768], [900, 700
 const pvpLandscapeViewports = [[844, 390], [667, 375]];
 const pvpScreenshotPath = process.env.WAVES_DUEL_PVP_SCREENSHOT || "";
 const setupScreenshotPath = process.env.WAVES_DUEL_SETUP_SCREENSHOT || "";
-const mobileRoot = path.resolve("mobile");
+const mobileRoot = path.resolve(process.env.WAVES_DUEL_MOBILE_ROOT || "mobile");
 
 async function startStaticServer() {
   if (process.env.WAVES_DUEL_LAYOUT_URL) return null;

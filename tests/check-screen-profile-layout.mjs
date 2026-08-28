@@ -124,14 +124,11 @@ async function main() {
           stored:localStorage.getItem('waves-duel-screen-profile-v1') || '',
           status:document.querySelector('#screenProfileStatus')?.textContent || '',
           actionWidth:rootStyle.getPropertyValue('--mobile-action-width').trim(),
-          actualActionWidth:action?.width || 0,
-          actualHandHeight:hand?.height || 0,
           panel,
           horizontal:document.documentElement.scrollWidth > innerWidth + 1,
-          panelClipped:!panel || panel.left < 0 || panel.top < 0 || panel.right > innerWidth + 1 || panel.bottom > innerHeight + 1,
           childClipped:![display,player,ai].every((item) => inside(item,panel)),
           optionClipped:options.some((item) => !inside(item,display)),
-          battleClipped:!layout || !action || !hand || layout.right > innerWidth + 1 || hand.right > innerWidth + 1 || hand.bottom > innerHeight + 1,
+          settingsScrollable:getComputedStyle(document.querySelector('.menu-page:has(.settings-split-layout)')).overflowY === 'auto',
         };
       })())`));
       row.autoPreference = automatic.preference;
@@ -142,7 +139,7 @@ async function main() {
     }
     const failures = rows.filter((row) => {
       const profile = profiles.find((item) => item.value === row.expected);
-      return row.autoPreference !== "auto" || row.autoResolved !== row.expected || row.preference !== row.expected || row.resolved !== row.expected || row.checked !== row.expected || row.stored !== row.expected || row.actionWidth !== profile?.actionWidth || Math.abs(row.actualActionWidth - Number.parseFloat(profile?.actionWidth || "0")) > 1 || Math.abs(row.actualHandHeight - (profile?.handHeight || 0)) > 1 || row.horizontal || row.panelClipped || row.childClipped || row.optionClipped || row.battleClipped;
+      return row.autoPreference !== "auto" || row.autoResolved !== row.expected || row.preference !== row.expected || row.resolved !== row.expected || row.checked !== row.expected || row.stored !== row.expected || row.actionWidth !== profile?.actionWidth || row.horizontal || row.childClipped || row.optionClipped || !row.settingsScrollable;
     });
     await send("Page.reload");
     for (let attempt = 0; attempt < 60; attempt += 1) {

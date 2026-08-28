@@ -4,14 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="dark">
-  <link rel="preconnect" href="https://pgxfrxrrcumavalbwqse.supabase.co" crossorigin>
-  <link rel="dns-prefetch" href="https://pgxfrxrrcumavalbwqse.supabase.co">
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>鸣潮：对决 | Wuthering Waves: Duel</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="manifest" href="manifest.webmanifest?v=20260828-0107">
+  <link rel="stylesheet" href="styles.css?v=20260828-0107">
 </head>
 <body>
   <section class="mobile-landscape-hint" aria-live="polite" aria-label="横屏游玩提示">
@@ -145,6 +143,7 @@
       <div class="pause-menu-actions">
         <button id="resumeGameButton" class="primary-button" type="button">返回当前对局</button>
         <button id="pauseSaveButton" class="secondary-button" type="button">保存对局</button>
+        <button id="pauseUiScaleButton" class="secondary-button" type="button">调整画面大小</button>
         <button id="pauseRulesButton" class="secondary-button" type="button">规则</button>
         <button id="pauseCodexButton" class="secondary-button" type="button">卡牌图鉴</button>
         <button id="returnHomeButton" class="secondary-button" type="button">返回主界面</button>
@@ -155,7 +154,7 @@
 
   <section id="roleDeckOverlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="roleDeckTitle">
     <div class="modal role-deck-modal">
-      <p class="eyebrow">CHARACTER DECK</p>
+      <p id="roleDeckEyebrow" class="eyebrow">CHARACTER DECK</p>
       <h2 id="roleDeckTitle">角色牌库</h2>
       <p id="roleDeckLead" class="modal-lead">点击左侧角色牌，在右侧查看完整效果。</p>
       <div class="role-deck-browser">
@@ -237,7 +236,7 @@
         </div>
       </div>
       <div class="main-menu-layout">
-        <button class="menu-panel-back" data-menu-page="home" type="button">← 返回封面</button>
+        <button id="menuPanelBackButton" class="menu-panel-back" data-menu-page="home" type="button">← 返回封面</button>
         <section class="menu-page hidden" id="menuStartPanel">
           <p class="modal-lead">选择 AI 难度和预设卡组，然后开始新的本地对战。</p>
           <label class="preset-select">玩家名称<input id="playerNameInput" type="text" maxlength="16" autocomplete="nickname" placeholder="请输入你的名字" /></label>
@@ -252,11 +251,11 @@
             <label class="preset-select">我方卡组<select id="playerPresetSelect"><option value="rover-female-yangyang-chixia">女漂泊者（预组）</option><option value="rover-male-jinhsi-sanhua">男漂泊者（预组）</option></select></label>
             <label class="preset-select">AI 卡组<select id="aiPresetSelect"><option value="rover-male-jinhsi-sanhua">男漂泊者（预组）</option><option value="rover-female-yangyang-chixia">女漂泊者（预组）</option></select></label>
             <small>每套均含 9 张角色牌（Lv.0–2）与 40 张行动牌。</small>
+            <label class="tutorial-toggle"><input id="enableTutorialCheckbox" type="checkbox"><span><b>开启新手教学</b><small>默认关闭；勾选后仅引导本局第一个我方回合。</small></span></label>
           </section>
           <button id="startGameButton" class="primary-button wide" type="button">开始游戏</button>
         </section>
         <section class="menu-page hidden deck-builder-page" id="menuDeckBuilderPanel">
-          <p class="modal-lead">逐张拖拽右侧卡牌到左侧组牌区。角色卡共 3–15 张、恰好 3 名角色且每名至少 1 张 Lv.0；行动牌须为 40 张、同编号最多 3 张，专属行动卡需先选入对应角色。</p>
           <div class="deck-builder-layout">
             <section class="deck-builder-current" aria-labelledby="deckBuilderTitle">
               <div class="deck-builder-heading"><div><p class="eyebrow">MY DECK</p><h3 id="deckBuilderTitle">未命名牌组</h3></div><span id="deckBuilderSummary" class="deck-builder-count">角色卡 0 / 3–15 · 角色 0 / 3 · 行动 0 / 40</span></div>
@@ -281,16 +280,20 @@
         </section>
         <section class="menu-page hidden" id="menuSettingsPanel">
           <div class="settings-split-layout">
-            <section class="settings-display-panel" aria-labelledby="screenProfileTitle">
-              <div class="settings-display-heading">
-                <p class="eyebrow" id="screenProfileTitle">屏幕适配</p>
-                <p id="screenProfileStatus" class="screen-profile-status" aria-live="polite"></p>
-              </div>
-              <div class="screen-profile-grid" role="radiogroup" aria-label="手机横屏适配档位">
-                <label class="screen-profile-option"><input type="radio" name="screenProfile" value="auto"><span><b>自动推荐</b><small>按当前可用视口选择</small></span></label>
-                <label class="screen-profile-option"><input type="radio" name="screenProfile" value="classic"><span><b>经典 16:9</b><small>736 × 414</small></span></label>
-                <label class="screen-profile-option"><input type="radio" name="screenProfile" value="standard"><span><b>全面屏 19.5:9</b><small>852 × 393</small></span></label>
-                <label class="screen-profile-option"><input type="radio" name="screenProfile" value="wide"><span><b>安卓宽屏 20:9</b><small>915 × 412</small></span></label>
+            <section class="settings-display-panel" aria-labelledby="uiScaleTitle">
+              <div class="ui-scale-control">
+                <div class="ui-scale-heading">
+                  <div><p class="eyebrow" id="uiScaleTitle">界面大小</p><small>所有设置保持可访问；可按需要缩放。设置仅保存在当前设备。</small></div>
+                  <output id="uiScaleValue" for="uiScaleRange">100%</output>
+                </div>
+                <input id="uiScaleRange" type="range" min="82" max="120" step="2" value="100" aria-label="界面大小" />
+                <div class="ui-scale-presets" role="group" aria-label="界面大小预设">
+                  <button class="secondary-button" type="button" data-ui-scale="88">紧凑 88%</button>
+                  <button class="secondary-button" type="button" data-ui-scale="100">标准 100%</button>
+                  <button class="secondary-button" type="button" data-ui-scale="112">放大 112%</button>
+                  <button id="resetUiScaleButton" class="secondary-button" type="button">恢复默认大小</button>
+                </div>
+                <button id="returnToGameFromScaleButton" class="primary-button wide" type="button" hidden>关闭调整，返回当前对局</button>
               </div>
             </section>
             <section class="settings-player-panel">
@@ -315,8 +318,9 @@
           <section class="test-lab-panel">
             <div class="test-card-picker"><label class="preset-select">我方牌色<select id="testPlayerToneSelect"><option value="red">红色</option><option value="green">绿色</option><option value="blue">蓝色</option></select></label><label class="preset-select">我方行动卡<select id="testPlayerCardSelect"></select></label></div>
             <div class="test-card-picker"><label class="preset-select">敌方牌色<select id="testAiToneSelect"><option value="red">红色</option><option value="green">绿色</option><option value="blue">蓝色</option></select></label><label class="preset-select">敌方行动卡<select id="testAiCardSelect"></select></label></div>
+            <div class="test-leader-picker"><label class="preset-select">我方默认领队<select id="testLeaderHeroSelect"></select></label><label class="preset-select">领队等级 / 卡牌<select id="testLeaderCardSelect"></select></label></div>
             <div id="testLabPreview" class="test-lab-preview" aria-live="polite"></div>
-            <p id="testLabHint" class="microcopy">选择后可直接进入战场；我方手牌仅保留所选卡，AI 会用所选卡响应。</p>
+            <p id="testLabHint" class="microcopy">选择后可直接进入战场；场上固定 3 名角色，局内点击角色可从全角色库直接替换。</p>
           </section>
           <button id="startTestLabButton" class="primary-button wide" type="button">进入测试场</button>
         </section>
@@ -473,12 +477,12 @@
 
   <div id="toast" class="toast" aria-live="polite"></div>
 
-  <script src="card-library/catalog.js"></script>
-  <script src="card-library/presets.js"></script>
-  <script src="core.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="pvp-config.js"></script>
-  <script src="pvp-game.js"></script>
-  <script src="game.js"></script>
+  <script src="card-library/catalog.js?v=20260828-0107"></script>
+  <script src="card-library/presets.js?v=20260828-0107"></script>
+  <script src="core.js?v=20260828-0107"></script>
+  <script src="pvp-config.js?v=20260828-0107"></script>
+  <script src="pvp-client-shim.js?v=20260828-0107"></script>
+  <script src="pvp-game.js?v=20260828-0107"></script>
+  <script src="game.js?v=20260828-0107"></script>
 </body>
 </html>

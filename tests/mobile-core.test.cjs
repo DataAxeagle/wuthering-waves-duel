@@ -16,6 +16,19 @@ function card(game, values) {
   return game.makeCard(Object.assign({ name: "测试卡", kind: "attack", tone: "blaze", cost: 0, attack: 1, speed: 1, text: "" }, values));
 }
 
+test("单机 AI 获得先后手决定权时会先完成选择，再锁定其准备状态", () => {
+  let game = null;
+  for (let seed = 1; seed <= 200; seed += 1) {
+    const candidate = new DuelGame({ seed, playerPreset: "rover-female-yangyang-chixia", aiPreset: "rover-male-jinhsi-sanhua" });
+    if (candidate.coinWinner === 1) { game = candidate; break; }
+  }
+  assert.ok(game, "测试随机种子未产生 AI 获得决定权的对局");
+  assert.equal(game.firstPlayer, 1);
+  assert.equal(game.players[1].mulliganUsed, true);
+  assert.equal(game.players[1].setupConfirmed, true);
+  assert.equal(game.confirmSetup(0).started, true);
+});
+
 test("手机版自组构筑按单张角色卡校验，并限制未选角色的专属行动卡", () => {
   const source = presets["rover-male-jinhsi-sanhua"];
   const valid = {
@@ -31,15 +44,27 @@ test("手机版自组构筑按单张角色卡校验，并限制未选角色的�
   const invalidActions = valid.actions.map(([id, count]) => [id, count]);
   invalidActions[0] = ["SD01-010", invalidActions[0][1]];
   assert.throws(() => new DuelGame({ seed: 7, playerPresetData: { ...valid, actions: invalidActions }, aiPreset: "rover-female-yangyang-chixia" }), /行动卡组构筑规则/);
+  const uiSource = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
+  const uiHtml = fs.readFileSync(path.join(__dirname, "..", "mobile", "index.html"), "utf8");
+  assert.match(uiSource, /card\?\.boundHero \|\| card\?\.hero/);
+  assert.match(uiSource, /selectedMatchConfig\(\)/);
+  assert.match(uiSource, /pendingMatchConfig/);
+  assert.match(uiSource, /showMenuPage\("start"\)/);
+  assert.match(uiHtml, /id="enableTutorialCheckbox"[^>]*type="checkbox"/);
 });
 
-test("手机版 v2 规则识别60卡牌库与椿角色", () => {
-  assert.equal(RULESET_VERSION, "2026-08-20-pvp-v2-60cards");
-  assert.equal(catalog.cards.length, 60);
-  assert.equal(new Set(catalog.cards.map((item) => item.id)).size, 60);
-  assert.equal(catalog.cards.filter((item) => item.type === "action").length, 34);
-  assert.equal(catalog.cards.filter((item) => item.type === "character").length, 26);
+test("手机版 v5 规则识别73卡牌库、安可与守岸人", () => {
+  assert.equal(RULESET_VERSION, "2026-08-28-pvp-v6-73cards-camellya-reupgrade");
+  assert.equal(catalog.cards.length, 73);
+  assert.equal(new Set(catalog.cards.map((item) => item.id)).size, 73);
+  assert.equal(catalog.cards.filter((item) => item.type === "action").length, 38);
+  assert.equal(catalog.cards.filter((item) => item.type === "character").length, 35);
   assert.equal(HEROES.camellya.name, "椿");
+  assert.equal(HEROES.encore.name, "安可");
+  assert.equal(HEROES.shorekeeper.name, "守岸人");
+  assert.deepEqual(catalog.cards.filter((item) => item.hero === "chixia" && item.level === 2).map((item) => item.id).sort(), ["BP01-025", "SD01-005"]);
+  assert.deepEqual(catalog.cards.filter((item) => item.hero === "yangyang" && item.level === 2).map((item) => item.id).sort(), ["BP01-022", "SD01-003"]);
+  assert.equal(catalog.cards.find((item) => item.id === "BP01-058")?.name, "解限");
 });
 
 test("手机版实现炽霞、啾啾斗意和朔风旋涌的卡面效果，并输出展示触发事件", () => {
@@ -108,6 +133,100 @@ test("女漂泊者 Lv.2 先结算回合开始技能抽牌，再进行本回合�
   assert.equal(game.lastTurnDraw.count, 2);
   assert.equal(game.lastTurnDraw.pending, false);
   assert.equal(game.snapshot().lastTurnStartEffects.effects[0].timing, "己方回合开始时");
+});
+
+test("未标注领队的角色效果可从后台触发，标注领队的效果仅当前领队触发", () => {
+  const game = new DuelGame({ seed: 171, firstPlayer: 0, playerPreset: "rover-female-yangyang-chixia", aiPreset: "rover-male-jinhsi-sanhua" });
+  const player = game.players[0];
+  player.activeHero = 1;
+  player.heroes[0].stack.push({ id: "TEST-BACKGROUND-FEMALE", name: "漂泊者（女）", level: 2, text: "【己方回合开始时】抽1张卡。" });
+  player.heroes[2].stack.push({ id: "TEST-BACKGROUND-LEADER", name: "炽霞", level: 2, text: "【领队】【己方回合开始时】抽1张卡。" });
+
+  const backgroundEffects = game.triggerTurnStart(0);
+  assert.deepEqual(backgroundEffects.map((effect) => effect.cardName), ["漂泊者（女）"]);
+
+  player.activeHero = 2;
+  const leaderEffects = game.triggerTurnStart(0);
+  assert.deepEqual(leaderEffects.map((effect) => effect.cardName).sort(), ["漂泊者（女）", "炽霞"].sort());
+});
+
+test("未标注领队的后台角色被动参与卡牌数值，领队被动离开领队位后失效", () => {
+  const game = new DuelGame({ seed: 172, firstPlayer: 0, playerPreset: "rover-female-yangyang-chixia", aiPreset: "rover-male-jinhsi-sanhua" });
+  const player = game.players[0];
+  const chixia = player.heroes.find((hero) => hero.id === "chixia");
+  chixia.stack.push({ id: "TEST-CHIXIA-BACKGROUND", name: "炽霞", level: 2, text: "己方拥有【领队技】的「炽霞」卡伤害+3。" });
+  const exclusive = { name: "炽霞专属", leaderOnly: "chixia", attack: 4, speed: 1 };
+  player.activeHero = player.heroes.findIndex((hero) => hero.id !== "chixia");
+  assert.equal(game.cardStats(0, exclusive).attack, 7);
+
+  const jinshi = player.heroes[player.activeHero];
+  jinshi.stack.push({ id: "TEST-LEADER-COMBO", name: jinshi.name, text: "【领队】己方的红色卡获得技能【连击】此卡伤害+1。" });
+  assert.equal(game.heroComboBonus(0, { tone: "blaze" }), 1);
+  player.activeHero = player.heroes.findIndex((hero) => hero.id === "chixia");
+  assert.equal(game.heroComboBonus(0, { tone: "blaze" }), 0);
+});
+
+test("【连击】行动牌不能进入普通对抗或响应对抗，只能在追击阶段使用", () => {
+  const game = start();
+  const opener = card(game, { name: "普通对抗牌", tone: "gale" });
+  const combo = card(game, { name: "连击换位", tone: "blaze", text: "【连击】切换己方领队。" });
+  game.players[0].hand = [combo];
+  game.players[1].hand = [opener];
+
+  assert.equal(game.legalContestCards(0).some((item) => item.uid === combo.uid), false);
+  assert.match(game.beginContest(0, combo.uid).reason, /连击牌只能在追击阶段/);
+
+  game.activePlayer = 1;
+  assert.equal(game.beginContest(1, opener.uid).ok, true);
+  assert.equal(game.legalResponses(0).some((item) => item.uid === combo.uid), false);
+  assert.equal(game.respondContest(0, combo.uid).ok, false);
+
+  game.pending = null;
+  game.phase = "pursuit";
+  game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === combo.uid), true);
+});
+
+test("同时带【领队技】与【连击】的牌必须满足领队和追击两个条件", () => {
+  const game = start();
+  const player = game.players[0];
+  const jinhsiIndex = player.heroes.findIndex((hero) => hero.id === "jinhsi");
+  const leaderCombo = card(game, { id: "TEST-LEADER-COMBO", name: "领队连击", leaderOnly: "jinhsi", tone: "blaze", text: "【领队技】己方领队为此卡专属角色时方可使用；【连击】测试。" });
+  player.hand = [leaderCombo];
+
+  player.activeHero = 0;
+  game.phase = "pursuit";
+  game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === leaderCombo.uid), false);
+
+  player.activeHero = jinhsiIndex;
+  game.pursuit = null;
+  game.phase = "main";
+  assert.equal(game.legalContestCards(0).some((item) => item.uid === leaderCombo.uid), false);
+
+  game.phase = "pursuit";
+  game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === leaderCombo.uid), true);
+});
+
+test("手机版追击允许非红色变奏连击，并在出牌前校验移岁迷邪的额外连击条件", () => {
+  const game = start();
+  const player = game.players[0];
+  const jinhsiIndex = player.heroes.findIndex((hero) => hero.id === "jinhsi");
+  const switchCombo = card(game, { name: "蓝色变奏连击", tone: "tide", kind: "dodge", text: "【连击】切换己方领队。" });
+  const migui = card(game, { id: "SD02-011", name: "移岁迷邪", leaderOnly: "jinhsi", tone: "blaze", attack: 5, text: "【领队技】己方领队为此卡专属角色时方可使用；【连击】若己方行动区有3张或以上的卡，此卡伤害+3。" });
+  player.hand = [switchCombo, migui];
+  player.activeHero = jinhsiIndex;
+  player.energy = 10;
+  game.phase = "pursuit";
+  game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === switchCombo.uid), true);
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === migui.uid), false);
+  player.actionZone.push(card(game, { name: "已在行动区的卡" }));
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === migui.uid), false);
+  player.actionZone.push(card(game, { name: "第二张已在行动区的卡" }));
+  assert.equal(game.legalPursuitCards(0).some((item) => item.uid === migui.uid), true);
 });
 
 test("弃牌区选牌由权威延迟队列校验，可恢复且重复提交幂等", () => {
@@ -208,21 +327,56 @@ test("手机版首页移除全屏游玩入口并保持横屏预览紧凑布局",
   assert.match(css, /html\.desktop-mobile-preview \.menu-cover-actions/);
 });
 
-test("手机版设置提供自动推荐与三种主流横屏适配档位", () => {
+test("电脑全屏复用手机战场信息架构且隐藏重复主要阶段操作", () => {
+  const css = fs.readFileSync(path.join(__dirname, "..", "mobile", "styles.css"), "utf8");
+  assert.match(css, /html\.desktop-ui \.game-layout \{[\s\S]*?grid-template-columns: minmax\(0, 1fr\) var\(--desktop-action-width\)/);
+  assert.match(css, /html\.desktop-ui \.side-panel \{ display: none; \}/);
+  assert.match(css, /html\.desktop-ui \.action-panel \.action-stack,[\s\S]*?display: none/);
+  assert.match(css, /html\.desktop-ui \.battlefield > \.opponent-deck/);
+  assert.match(css, /html\.desktop-ui \.battlefield > \.player-deck/);
+  assert.match(css, /html\.desktop-ui \.hand-dock \{[\s\S]*?grid-template-columns: minmax\(0, 78%\) minmax\(0, 22%\)/);
+  assert.match(css, /html\.desktop-ui \.hand-selection-panel \.selection-preview \{[\s\S]*?overflow-y: auto/);
+});
+
+test("手机版设置提供可操作的画面大小滑动条与预设档位", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "mobile", "index.html"), "utf8");
   const source = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
   const css = fs.readFileSync(path.join(__dirname, "..", "mobile", "styles.css"), "utf8");
-  assert.match(html, /name="screenProfile" value="auto"/);
-  assert.match(html, /value="classic"[\s\S]*?736 × 414/);
-  assert.match(html, /value="standard"[\s\S]*?852 × 393/);
-  assert.match(html, /value="wide"[\s\S]*?915 × 412/);
-  assert.match(source, /waves-duel-screen-profile-v1/);
-  assert.match(source, /function closestScreenProfile\(\)/);
-  assert.match(source, /root\.dataset\.screenProfile = resolved/);
-  assert.match(source, /localStorage\.setItem\(SCREEN_PROFILE_KEY, normalized\)/);
-  assert.match(css, /html\[data-screen-profile="classic"\]/);
-  assert.match(css, /html\[data-screen-profile="wide"\]/);
-  assert.match(css, /var\(--mobile-action-width\)/);
+  assert.match(html, /id="uiScaleRange"[^>]*min="82"[^>]*max="120"/);
+  assert.match(html, /data-ui-scale="88"/);
+  assert.match(html, /data-ui-scale="100"/);
+  assert.match(html, /data-ui-scale="112"/);
+  assert.match(source, /waves-duel-ui-scale-v1/);
+  assert.match(source, /localStorage\.setItem\(UI_SCALE_KEY, String\(normalized\)\)/);
+  assert.match(css, /\.ui-scale-control/);
+});
+
+test("手机版设置提供可持久化的界面缩放，并为平板给出独立默认值", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "mobile", "index.html"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "..", "mobile", "styles.css"), "utf8");
+  assert.match(html, /id="uiScaleRange"/);
+  assert.match(html, /data-ui-scale="88"/);
+  assert.match(html, /data-ui-scale="112"/);
+  assert.match(source, /waves-duel-ui-scale-v1/);
+  assert.match(source, /root\.dataset\.deviceFormFactor/);
+  assert.match(source, /shortEdge >= 600/);
+  assert.match(source, /applyUiScale\(uiScalePercent\)/);
+  assert.match(css, /html\.ui-scale-zoom:not\(\.desktop-ui\) body/);
+  assert.match(css, /html\[data-device-form-factor="tablet"\]:not\(\.desktop-ui\)/);
+});
+
+test("对局内菜单可直达画面大小设置且不丢弃当前对局", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "mobile", "index.html"), "utf8");
+  const source = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
+  assert.match(html, /id="pauseUiScaleButton"[^>]*>调整画面大小</);
+  assert.match(html, /id="returnToGameFromScaleButton"[^>]*>关闭调整，返回当前对局</);
+  assert.match(source, /function openInGameUiScaleSettings\(\)/);
+  assert.match(source, /function syncInGameScaleReturn\(visible\)/);
+  assert.match(source, /elements\.returnToGame\.hidden = false/);
+  assert.match(source, /showMenuPage\("settings"\)/);
+  assert.match(source, /button\.dataset\.menuPage === "home"[\s\S]*?elements\.returnToGame\.click\(\)/);
+  assert.match(source, /elements\.pauseUiScale\.addEventListener\("click", openInGameUiScaleSettings\)/);
 });
 
 test("手机版所有卡牌详情入口展示角色与行动牌的补充属性", () => {
@@ -235,6 +389,16 @@ test("手机版所有卡牌详情入口展示角色与行动牌的补充属性",
   assert.match(source, /const attributes = cardSupplementalAttributeText\(selected\)/);
   assert.match(source, /const attributes = cardSupplementalAttributeText\(hero\.stack\[hero\.stack\.length - 1\]\)/);
   assert.match(source, /const attributes = cardSupplementalAttributeText\(sourceCard\)/);
+});
+
+test("双方协奏区都使用公开卡牌查看入口并复用完整卡面详情弹窗", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
+  const html = fs.readFileSync(path.join(__dirname, "..", "mobile", "index.html"), "utf8");
+  assert.match(source, /data-charge-player=/);
+  assert.match(source, /openCardPile\(button\.dataset\.chargePlayer, "charge"\)/);
+  assert.match(source, /player\?\.chargeZone \|\| \[\]/);
+  assert.match(source, /协奏区为双方公开信息/);
+  assert.match(html, /id="roleDeckEyebrow"/);
 });
 
 test("AI 红牌响应获胜后先结算本轮效果，再逐次追击，停止后由原回合方结束回合", () => {

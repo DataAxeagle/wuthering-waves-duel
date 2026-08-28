@@ -429,7 +429,7 @@
     });
     const arenaCore = document.querySelector(".arena-core");
     const upgradeCost = interactionMode === "upgrade-card" && upgradeHeroIndex != null
-      ? selectedUpgradeCandidate(0, upgradeHeroIndex)?.level || 0
+      ? game.upgradeCost(selectedUpgradeCandidate(0, upgradeHeroIndex))
       : 0;
     // 每次只高亮当前真正要操作的一个区域：按钮 → 选牌/选角色 → 中央确认框。
     // 不能把同一流程的所有区域一次性点亮，否则玩家不知道下一步该点哪里。
@@ -1521,6 +1521,7 @@
       charge: committedItems.filter((item) => item?.destination === "charge").reduce((total, item) => total + (item.cards?.length || 0), 0),
     });
     await animateEffectResourceChanges(resourceEffect, drawReason, chargeReason);
+    if (game?.pendingEffectDiscard) await resolveEffectDiscardFlow();
     return committed;
   }
 
@@ -1799,10 +1800,26 @@
     return awaitUtilityModal("payment");
   }
 
+  function deferredChoiceTitle(operation) {
+    if (!operation) return "从卡牌中选择";
+    if (operation.type === "draw-then-discard") return "确认触发效果";
+    if (operation.type === "hand-discard-switch-leader") return "从手牌选择要弃置的卡牌";
+    if (operation.type === "free-role-upgrade") return "从角色牌库选择要叠放的角色牌";
+    return "从弃牌区选择卡牌";
+  }
+
+  function deferredChoiceDetail(operation) {
+    if (!operation) return "请选择一张卡牌继续结算。";
+    if (operation.type === "draw-then-discard") return `该效果会先抽 1 张卡，再自动弃置 1 张手牌。${operation.optional ? "也可以取消此效果。" : ""}`;
+    if (operation.type === "hand-discard-switch-leader") return `请选择 1 张手牌弃置，并将领队切换为「${HEROES[operation.hero]?.name || operation.hero || "指定角色"}」。${operation.optional ? "也可以取消此效果。" : ""}`;
+    if (operation.type === "free-role-upgrade") return `请选择 1 张符合条件的角色牌，将其叠放到「${HEROES[operation.hero]?.name || operation.hero || "指定角色"}」上。${operation.optional ? "也可以取消此效果。" : ""}`;
+    return `请选择 1 张${operation.type === "discard-normal-to-hand" ? "〈常态攻击〉" : ""}弃牌卡${operation.type === "discard-to-charge" ? "置入协奏区" : "加入手牌"}。${operation.optional ? "此效果可以取消。" : ""}`;
+  }
+
   function showDiscardRecoveryChoice(effect, operation) {
     const ownerIndex = operation.playerIndex;
     const cards = typeof game.deferredDiscardCandidates === "function" ? game.deferredDiscardCandidates(operation) : [];
-    if (!cards.length) {
+    if (operation.type !== "draw-then-discard" && !cards.length) {
       if (operation.optional) game.chooseDeferredDiscardCard(operation, null);
       return Promise.resolve();
     }
@@ -1811,15 +1828,32 @@
     responseSelectedCardUid = null;
     utilityModalMode = "discard-recovery";
     elements.responseOverlay.dataset.utilityMode = "discard-recovery";
-    const destination = operation.type === "discard-to-charge" ? "置入协奏区" : "加入手牌";
+    const destination = operation.type === "discard-to-charge" ? "置入协奏区"
+      : operation.type === "draw-then-discard" ? "触发后弃置"
+      : operation.type === "free-role-upgrade" ? "叠放升级"
+      : operation.type === "hand-discard-switch-leader" ? "弃置并切换领队"
+      : "加入手牌";
     elements.responseEyebrow.textContent = "DISCARD RECOVERY";
-    elements.responseTitle.textContent = `「${effect.cardName}」：从弃牌区选择卡牌`;
+    elements.responseTitle.textContent = `「${effect.cardName}」：${deferredChoiceTitle(operation)}`;
+    elements.responseDetail.textContent = deferredChoiceDetail(operation);
     const renderChoices = () => {
+      if (operation.type === "draw-then-discard") {
+        elements.responseCards.innerHTML = '<span class="empty-hand">确认后将先抽 1 张卡，再自动弃置 1 张手牌。</span>';
+        elements.responseSelectionDetail.innerHTML = '<div class="choice-effect-empty"><span>◇</span><p>点击确认即可触发该效果。</p></div>';
+        elements.confirmChoice.disabled = false;
+        elements.confirmChoice.textContent = "确认触发效果";
+        elements.cancelChoice.hidden = !operation.optional;
+        elements.cancelChoice.classList.toggle("hidden", !operation.optional);
+        elements.cancelChoice.textContent = "取消此效果";
+        return;
+      }
       elements.responseCards.innerHTML = cards.map((card) => cardHtml(card, ownerIndex, { response: true, choiceSelected: card.uid === responseSelectedCardUid })).join("");
-      elements.responseSelectionDetail.innerHTML = choiceEffectHtml(responseSelectedCardUid ? cards.find((card) => card.uid === responseSelectedCardUid) : null, ownerIndex, "选择一张符合条件的弃牌卡后，这里会显示其完整效果与补充属性。");
+      elements.responseSelectionDetail.innerHTML = choiceEffectHtml(responseSelectedCardUid ? cards.find((card) => card.uid === responseSelectedCardUid) : null, ownerIndex, "选择一张符合条件的卡牌后，这里会显示其完整效果与补充属性。");
       elements.confirmChoice.disabled = !responseSelectedCardUid;
       elements.confirmChoice.textContent = `确认${destination}`;
-      elements.responseDetail.textContent = `请选择 1 张${operation.type === "discard-normal-to-hand" ? "〈常态攻击〉" : ""}弃牌卡${destination}。${operation.optional ? "此效果可以取消。" : ""}`;
+      elements.cancelChoice.hidden = !operation.optional;
+      elements.cancelChoice.classList.toggle("hidden", !operation.optional);
+      elements.cancelChoice.textContent = "取消此效果";
       elements.responseCards.querySelectorAll("[data-card]").forEach((button) => button.addEventListener("click", () => {
         responseSelectedCardUid = button.dataset.card;
         renderChoices();
@@ -1827,25 +1861,41 @@
     };
     elements.confirmChoice.hidden = false;
     elements.confirmChoice.classList.remove("hidden");
-    elements.cancelChoice.hidden = !operation.optional;
-    elements.cancelChoice.classList.toggle("hidden", !operation.optional);
-    elements.cancelChoice.textContent = "取消此效果";
     renderChoices();
     elements.responseOverlay.classList.remove("hidden");
     return awaitUtilityModal("discard-recovery");
   }
 
   async function resolveDeferredDiscardRecovery(effect) {
-    const operations = (effect?.deferred || []).filter((operation) => operation && !operation.committed && operation.choiceRequired && ["discard-to-charge", "discard-normal-to-hand"].includes(operation.type));
+    const operations = (effect?.deferred || []).filter((operation) => operation && !operation.committed && operation.choiceRequired);
     for (const operation of operations) {
       const candidates = typeof game.deferredDiscardCandidates === "function" ? game.deferredDiscardCandidates(operation) : [];
       if (operation.playerIndex === 1) {
-        if (candidates.length) {
-          const selected = candidates.slice().sort((left, right) => operation.type === "discard-to-charge" ? aiCardScore(left) - aiCardScore(right) : aiCardScore(right) - aiCardScore(left))[0];
+        if (operation.type === "draw-then-discard") {
+          game.chooseDeferredDiscardCard(operation, "accept");
+        } else if (candidates.length) {
+          const selected = candidates.slice().sort((left, right) => {
+            if (operation.type === "discard-to-charge" || operation.type === "hand-discard-switch-leader") return aiCardScore(left) - aiCardScore(right);
+            if (operation.type === "discard-normal-to-hand" || operation.type === "discard-filtered-to-hand") return aiCardScore(right) - aiCardScore(left);
+            if (operation.type === "free-role-upgrade") return String(left.id || left.name || "").localeCompare(String(right.id || right.name || ""), "zh-CN");
+            return aiCardScore(right) - aiCardScore(left);
+          })[0];
           game.chooseDeferredDiscardCard(operation, selected.uid);
         } else if (operation.optional) game.chooseDeferredDiscardCard(operation, null);
       } else await showDiscardRecoveryChoice(effect, operation);
     }
+  }
+  async function resolveContestStartEffects(result, playerIndex, uid) {
+    let current = result;
+    while (current?.ok && current.pendingStart) {
+      for (const effect of current.contestStartEffects || []) {
+        await animateAndCommitDeferredEffect(effect, effect.timing || "对抗开始", `「${effect.cardName}」效果抽牌`, `「${effect.cardName}」效果置入协奏区`);
+      }
+      render();
+      current = game.beginContest(playerIndex, current.retryUid || uid);
+      if (!current.ok) return current;
+    }
+    return current;
   }
   async function animateContestWithCost(result) {
     await animateContest(result);
@@ -1962,7 +2012,7 @@
     const chargedCards = player.chargeZone.length
       ? player.chargeZone.map((card) => {
         const art = actionArtPath(card.key || card.id);
-        return `<span class="charge-card" title="${escapeHtml(card.name)}">${art ? `<img src="${escapeHtml(art)}" alt="${escapeHtml(card.name)}">` : escapeHtml(card.name.slice(0, 1))}</span>`;
+        return `<button class="charge-card" type="button" data-charge-player="${player.index}" data-charge-card="${escapeHtml(card.uid || card.id)}" aria-label="查看${escapeHtml(player.name)}协奏区的${escapeHtml(card.name)}">${art ? `<img src="${escapeHtml(art)}" alt="${escapeHtml(card.name)}">` : escapeHtml(card.name.slice(0, 1))}</button>`;
       }).join("")
       : '<span class="charge-empty">暂无协奏牌</span>';
     const roleDeck = player.index === 0 ? `<div class="role-deck-slot"><button class="role-deck-button" type="button" data-role-deck-player="0" aria-label="查看角色牌库，剩余 ${player.roleDeck.length} 张"></button><span class="pile-caption">角色牌库 ${player.roleDeck.length}</span></div>` : "";
@@ -2001,19 +2051,23 @@
     if (!game || !elements.roleDeckCards) return;
     const player = game.players[roleDeckViewer.playerIndex];
     const isDiscard = roleDeckViewer.pile === "discard";
-    const cards = isDiscard ? player?.discard || [] : player?.roleDeck || [];
-    const selected = cards.find((card) => card.id === roleDeckViewer.cardId) || cards[0];
-    roleDeckViewer.cardId = selected?.id || null;
-    elements.roleDeckTitle.textContent = isDiscard ? "我的弃牌区" : `${player?.name || ""}的角色牌库`;
-    elements.roleDeckLead.textContent = cards.length ? `${isDiscard ? "弃牌区共有" : "剩余"} ${cards.length} 张${isDiscard ? "行动卡" : "角色牌"}。点击左侧预览，在右侧查看完整效果。` : `该${isDiscard ? "弃牌区" : "角色牌库"}暂无可查看的卡牌。`;
+    const isCharge = roleDeckViewer.pile === "charge";
+    const cards = isDiscard ? player?.discard || [] : isCharge ? player?.chargeZone || [] : player?.roleDeck || [];
+    const cardKey = (card) => card?.uid || card?.id;
+    const selected = cards.find((card) => cardKey(card) === roleDeckViewer.cardId) || cards[0];
+    roleDeckViewer.cardId = cardKey(selected) || null;
+    const pileName = isDiscard ? "弃牌区" : isCharge ? "协奏区" : "角色牌库";
+    const cardType = isDiscard || isCharge ? "行动卡" : "角色牌";
+    elements.roleDeckTitle.textContent = isDiscard ? "我的弃牌区" : `${player?.name || ""}的${pileName}`;
+    elements.roleDeckLead.textContent = cards.length ? `${pileName}共有 ${cards.length} 张${cardType}。点击左侧预览，在右侧查看完整效果。` : `该${pileName}暂无可查看的卡牌。`;
     elements.roleDeckCards.innerHTML = cards.length ? cards.map((card) => {
       const art = cardArtPath(card.art);
-      const cardBadge = isDiscard ? `COST ${card.cost ?? 0}` : `Lv.${card.level ?? 0}`;
-      return `<button type="button" class="role-deck-card ${card.id === selected?.id ? "selected" : ""}" data-role-deck-card="${escapeHtml(card.id)}"><span>${escapeHtml(cardBadge)}</span>${art ? `<img src="${escapeHtml(art)}" alt="${escapeHtml(card.name)}">` : "<i>暂无卡面</i>"}<b>${escapeHtml(card.name)}</b></button>`;
-    }).join("") : `<p class="empty-hand">暂无可查看的${isDiscard ? "弃牌" : "角色牌"}。</p>`;
+      const cardBadge = isDiscard || isCharge ? `COST ${card.cost ?? 0}` : `Lv.${card.level ?? 0}`;
+      return `<button type="button" class="role-deck-card ${cardKey(card) === cardKey(selected) ? "selected" : ""}" data-role-deck-card="${escapeHtml(cardKey(card))}"><span>${escapeHtml(cardBadge)}</span>${art ? `<img src="${escapeHtml(art)}" alt="${escapeHtml(card.name)}">` : "<i>暂无卡面</i>"}<b>${escapeHtml(card.name)}</b></button>`;
+    }).join("") : `<p class="empty-hand">暂无可查看的${isDiscard ? "弃牌" : isCharge ? "协奏牌" : "角色牌"}。</p>`;
     if (!selected) { elements.roleDeckDetail.innerHTML = ""; return; }
     const art = cardArtPath(selected.art);
-    const typeText = isDiscard ? `${selected.category || "行动卡"} · COST ${selected.cost ?? 0}` : `角色牌 · Lv.${selected.level ?? 0}`;
+    const typeText = isDiscard || isCharge ? `${selected.category || "行动卡"} · COST ${selected.cost ?? 0}` : `角色牌 · Lv.${selected.level ?? 0}`;
     elements.roleDeckDetail.innerHTML = `${art ? `<img src="${escapeHtml(art)}" alt="${escapeHtml(selected.name)}完整卡面">` : ""}<div><p class="eyebrow">${escapeHtml(typeText)}</p><h3>${escapeHtml(selected.name)}</h3><p class="role-deck-effect">${escapeHtml(selected.text || "暂无额外文字效果。").replace(/\n/g, "<br>")}</p></div>`;
     elements.roleDeckCards.querySelectorAll("[data-role-deck-card]").forEach((button) => button.addEventListener("click", () => {
       roleDeckViewer.cardId = button.dataset.roleDeckCard;
@@ -2032,6 +2086,9 @@
     elements.playerZone.innerHTML = zoneHtml(game.players[0], true);
     [elements.aiZone, elements.playerZone].forEach((zone) => zone.querySelectorAll("[data-role-deck-player]").forEach((button) => {
       button.addEventListener("click", () => openRoleDeck(button.dataset.roleDeckPlayer));
+    }));
+    [elements.aiZone, elements.playerZone].forEach((zone) => zone.querySelectorAll("[data-charge-player]").forEach((button) => {
+      button.addEventListener("click", () => { roleDeckViewer = { playerIndex: Number(button.dataset.chargePlayer), cardId: button.dataset.chargeCard, pile: "charge" }; renderRoleDeckViewer(); elements.roleDeckOverlay.classList.remove("hidden"); });
     }));
     elements.aiZone.querySelectorAll("[data-hero]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -2117,7 +2174,7 @@
             upgradeDiscardUids = upgradeDiscardUids.filter((item) => item !== uid);
           } else {
             const required = interactionMode === "upgrade-card"
-              ? selectedUpgradeCandidate(0, upgradeHeroIndex)?.level || 0
+              ? game.upgradeCost(selectedUpgradeCandidate(0, upgradeHeroIndex))
               : Math.max(0, player.hand.length - 8);
             if (upgradeDiscardUids.length >= required) return toast(`本次只需选择 ${required} 张弃牌；如需更换，请先取消已选卡。`);
             upgradeDiscardUids = [...upgradeDiscardUids, uid];
@@ -2565,7 +2622,8 @@
     }
     const candidate = selectedUpgradeCandidate(0, heroIndex);
     if (!candidate) return toast("请选择本次要叠放的角色牌");
-    if (upgradeDiscardUids.length !== candidate.level) return toast(`请选择 ${candidate.level} 张手牌作为 Lv.${candidate.level} 升级代价`);
+    const requiredCost = game.upgradeCost(candidate);
+    if (upgradeDiscardUids.length !== requiredCost) return toast(`请选择 ${requiredCost} 张手牌作为本次升级代价`);
     const cards = upgradeDiscardUids.map((uid) => game.findHandCard(0, uid)).filter(Boolean);
     uiLocked = true;
     const result = game.upgrade(0, heroIndex, candidate.id, upgradeDiscardUids);
@@ -2608,6 +2666,7 @@
       return toast(result.reason);
     }
     await animateHeroSwitch(0, result.fromHeroIndex, result.toHeroIndex);
+    for (const trigger of result.roleTriggers || []) await animateAndCommitDeferredEffect(trigger, trigger.timing || "切换", `「${trigger.cardName}」效果抽牌`, `「${trigger.cardName}」效果置入协奏区`);
     uiLocked = false;
     completeTutorialStep("switch");
     render();
@@ -2680,6 +2739,14 @@
       uiLocked = false;
       render();
       return toast(result.reason);
+    }
+    if (result.pendingStart) {
+      for (const effect of result.contestStartEffects || []) await animateAndCommitDeferredEffect(effect, effect.timing || "对抗阶段开始", `「${effect.cardName}」效果抽牌`, `「${effect.cardName}」效果置入协奏区`);
+      uiLocked = false;
+      interactionMode = "battle-select";
+      selectedCardUid = uid;
+      render();
+      return completeBattleSelection();
     }
     await animateCoverCard(0);
     if (result.pending) {

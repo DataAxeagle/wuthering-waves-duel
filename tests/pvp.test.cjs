@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { DuelGame, RULESET_VERSION, validatePresetConstruction } = require("../mobile/core.js");
 
 test("多人构造不会替第二位玩家自动选择领队或确认准备", () => {
@@ -99,7 +100,8 @@ test("响应阶段不会通过行动区、费用或预组编号泄露暗置行�
   const { projectState } = await import("../supabase/functions/_shared/pvp-state.mjs");
   const game = new DuelGame({ seed: 17, multiplayer: true, firstPlayer: 0 });
   game.confirmSetup(0); game.confirmSetup(1);
-  const hiddenCard = game.players[0].hand[0];
+  const hiddenCard = game.players[0].hand.find((card) => !game.isComboCard(card));
+  assert.ok(hiddenCard, "起手牌中应存在可用于普通对抗的非连击牌");
   game.players[0].energy = 20;
   game.players[0].chargeZone = Array.from({ length: 20 }, (_value,index) => ({ uid:`energy-${index}` }));
   assert.equal(game.beginContest(0, hiddenCard.uid).ok, true);
@@ -111,7 +113,7 @@ test("响应阶段不会通过行动区、费用或预组编号泄露暗置行�
   assert.equal(opponentView.pending.responder, 0);
   assert.equal(opponentView.pending.initiatorCard.hidden, true);
   assert.equal(opponentView.pending.initiatorCost, undefined);
-  assert.doesNotMatch(JSON.stringify(opponentView), new RegExp(hiddenCard.name));
+  assert.doesNotMatch(JSON.stringify(opponentView), new RegExp(`"uid":"${hiddenCard.uid}"[^}]*"name"`));
 });
 
 test("权威延迟效果只向拥有者暴露选牌信息", async () => {
@@ -144,20 +146,85 @@ test("PVP函数接入新版规则、延迟效果命令和旧对局拒绝", () =>
   const root = path.join(__dirname, "..");
   const core = fs.readFileSync(path.join(root, "mobile", "core.js"), "utf8");
   const edge = fs.readFileSync(path.join(root, "supabase", "functions", "pvp", "index.ts"), "utf8");
-  assert.match(core, /RULESET_VERSION\s*=\s*"2026-08-20-pvp-v2-60cards"/);
+  assert.match(core, /RULESET_VERSION\s*=\s*"2026-08-28-pvp-v6-73cards-camellya-reupgrade"/);
   assert.match(edge, /resolve_deferred_effect:\s*\(\)\s*=>\s*resolveDeferredEffect/);
   assert.match(edge, /match\.ruleset_version[\s\S]{0,260}match\.state\?\.rulesetVersion/);
   assert.match(edge, /game\.resolveDeferredEffect\(seat, effectId, choices\)/);
+  assert.match(edge, /operation === "leave"/);
+  assert.match(edge, /format: "pvp-receipt-v2", event: result, snapshot/);
+  assert.match(edge, /pvp_action_receipts[\s\S]{0,260}gt\("version", sinceVersion\)[\s\S]{0,180}order\("version"/);
 });
 
-test("PVP 前端只包含可公开的生产配置，不包含 service-role key", () => {
+test("空房离开由服务端确认，失败时保留会话供重试", () => {
+  const root = path.join(__dirname, "..");
+  const lobby = fs.readFileSync(path.join(root, "mobile", "pvp.js"), "utf8");
+  const edge = fs.readFileSync(path.join(root, "supabase", "functions", "pvp", "index.ts"), "utf8");
+  const leave = lobby.slice(lobby.indexOf("async function leaveRoom"), lobby.indexOf("async function claimTimeout"));
+  assert.match(leave, /await api\("leave", \{ roomId:session\.roomId \}\)/);
+  assert.match(leave, /clearSession\(\)[\s\S]{0,80}location\.href/);
+  assert.match(leave, /离开失败：[\s\S]+请检查网络后重试/);
+  assert.doesNotMatch(leave, /finally[\s\S]{0,200}clearSession/);
+  assert.match(edge, /room\.host_user_id === userId \|\| \(count \|\| 0\) <= 1[\s\S]{0,220}pvp_rooms"\)\.delete/);
+  assert.match(edge, /strandedRooms[\s\S]{0,500}\(count \|\| 0\) <= 1[\s\S]{0,180}pvp_rooms"\)\.delete/);
+});
+
+test("网络跨版本时严格按事件版本串行动画后再应用状态", async () => {
+  const source = fs.readFileSync(path.join(__dirname, "../mobile/pvp-game.js"), "utf8");
+  const roomId = "room-order-test";
+  const sessionKey = "waves-duel-pvp-session-v1";
+  const cacheKey = `waves-duel-pvp-view-v2:${roomId}`;
+  const storage = new Map([
+    [sessionKey, JSON.stringify({ roomId, seat:0 })],
+    [cacheKey, JSON.stringify({ version:1, view:{ players:[{ name:"我" },{ name:"敌" }] } })],
+  ]);
+  const order = [];
+  const channel = { on(){ return this; }, subscribe(){ return this; } };
+  const client = {
+    auth:{ getSession:async()=>({ data:{ session:{ access_token:"test" } } }) },
+    channel:()=>channel,
+    removeChannel:async()=>{},
+  };
+  const payload = {
+    ok:true,
+    room:{ status:"in_game" },
+    view:{ version:3, view:{ players:[{ step:3 },{ step:3 }] } },
+    events:[
+      { version:3, event:{ commandType:"charge", actorSeat:1, marker:3 }, view:{ players:[{ step:3 },{ step:3 }] } },
+      { version:2, event:{ commandType:"switch_hero", actorSeat:1, marker:2 }, view:{ players:[{ step:2 },{ step:2 }] } },
+    ],
+    hasMore:false,
+  };
+  const context = {
+    window:{ WavesDuelPvpConfig:{ supabaseUrl:"https://example.supabase.co", supabasePublishableKey:"public" }, supabase:{ createClient:()=>client } },
+    localStorage:{ getItem:(key)=>storage.get(key)||null, setItem:(key,value)=>storage.set(key,String(value)), removeItem:(key)=>storage.delete(key) },
+    location:{ replace:()=>{} },
+    fetch:async()=>({ ok:true, status:200, json:async()=>payload }),
+    crypto:{ randomUUID:()=>"00000000-0000-4000-8000-000000000000" },
+    setInterval:()=>1,
+    clearInterval:()=>{},
+    console,
+  };
+  vm.runInNewContext(source, context, { filename:"mobile/pvp-game.js" });
+  await context.window.WavesDuelPvpGame.init({
+    onState:(state)=>order.push(`state-${state.view.version}`),
+    onEvent:async(event)=>{ order.push(`anim-${event.marker}-start`); await Promise.resolve(); order.push(`anim-${event.marker}-end`); },
+    onError:(error)=>{ throw error; },
+  });
+  assert.deepEqual(order, ["state-1","anim-2-start","anim-2-end","state-2","anim-3-start","anim-3-end","state-3"]);
+  assert.equal(JSON.parse(storage.get(cacheKey)).version, 3);
+});
+
+test("PVP 前端只使用腾讯云同源公开配置，不包含 Supabase 或服务端密钥", () => {
   const root = path.join(__dirname, "..");
   const frontend = ["mobile/pvp.html","mobile/pvp.js","mobile/pvp-game.js","mobile/pvp-config.js"].map((file) => fs.readFileSync(path.join(root,file),"utf8")).join("\n");
   assert.doesNotMatch(frontend, /SUPABASE_SERVICE_ROLE_KEY|service[_-]?role/i);
   const config = fs.readFileSync(path.join(root,"mobile/pvp-config.js"),"utf8");
-  assert.match(config, /supabaseUrl:\s*"https:\/\/pgxfrxrrcumavalbwqse\.supabase\.co"/);
-  assert.match(config, /supabasePublishableKey:\s*"eyJ/);
-  assert.match(config, /turnstileSiteKey:\s*"0x4A/);
+  assert.match(config, /backend:\s*"tencent-ws"/);
+  assert.match(config, /supabaseUrl:\s*wavesDuelPvpOrigin/);
+  assert.match(config, /supabasePublishableKey:\s*"tencent-same-origin"/);
+  assert.match(config, /turnstileSiteKey:\s*""/);
+  assert.doesNotMatch(config, /supabase\.co|eyJhbGci|0x4A/);
+  assert.doesNotMatch(frontend, /cdn\.jsdelivr\.net\/npm\/@supabase/);
 });
 
 test("Turnstile 未完成时锁住房间按钮，并提供失败重试状态", () => {
@@ -170,7 +237,25 @@ test("Turnstile 未完成时锁住房间按钮，并提供失败重试状态", (
   assert.match(html, /id="turnstileRetryButton"/);
   for (const callback of ["error-callback", "expired-callback", "timeout-callback", "unsupported-callback"]) assert.match(script, new RegExp(callback));
   assert.match(script, /setRoomActionsEnabled\(false\)/);
-  assert.match(script, /elements\.turnstileRetry\.addEventListener\("click",renderCaptcha\)/);
+  assert.match(script, /elements\.turnstileRetry\.addEventListener\("click",retryCaptcha\)/);
+  assert.match(script, /captchaEpoch/);
+  assert.match(script, /const current = \(\) => epoch === captchaEpoch/);
+  assert.match(script, /retry: "never"/);
+  assert.match(script, /render=explicit&onload=wavesDuelTurnstileReady/);
+  assert.match(script, /CAPTCHA_LOAD_TIMEOUT_MS = 15000/);
+  assert.match(script, /const attempt = \+\+captchaAttempt/);
+  assert.match(script, /if \(captchaWatchdog === null\) armCaptchaWatchdog\(\)/);
+  assert.match(script, /attempt !== captchaAttempt/);
+  assert.match(script, /人机验证响应超时，请重新加载验证/);
+  assert.match(script, /"error-callback": \(code\)/);
+  assert.doesNotMatch(script, /"before-interactive-callback"[^\n]+clearCaptchaWatchdog/);
+  assert.match(script, /callback: \(token\)[^\n]+persistCaptchaSession\(token\)/);
+  assert.match(script, /async function persistCaptchaSession\(token\)/);
+  assert.match(script, /验证已通过，正在建立联机身份/);
+  assert.match(script, /markCaptchaVerified\("联机身份已保存，可以创建或加入房间"\)/);
+  assert.match(script, /if \(captchaAuthPromise\) await captchaAuthPromise/);
+  assert.match(script, /getUser\(\)/);
+  assert.match(script, /response\.status === 401 \|\| result\.error === "unauthorized"/);
 });
 
 test("PVP 开局后复用单机原战场而非第二套简化战斗页", () => {
@@ -179,7 +264,7 @@ test("PVP 开局后复用单机原战场而非第二套简化战斗页", () => {
   const lobby = fs.readFileSync(path.join(root,"mobile/pvp.js"),"utf8");
   const adapter = fs.readFileSync(path.join(root,"mobile/pvp-game.js"),"utf8");
   assert.match(index, /id="arenaContestStage"/);
-  assert.match(index, /src="pvp-game\.js"/);
+  assert.match(index, /src="pvp-game\.js(?:\?v=[^"]+)?"/);
   assert.match(lobby, /index\.html\?pvp=1/);
   assert.match(adapter, /functions\/v1\/pvp/);
   assert.match(adapter, /choose_initiative[\s\S]+session\.seat/);
@@ -188,9 +273,11 @@ test("PVP 开局后复用单机原战场而非第二套简化战斗页", () => {
   assert.match(gameUi, /passDefense\.classList\.remove\("hidden"\)/);
   assert.match(gameUi, /initiativeDecisionHint/);
   assert.match(gameUi, /确认前可修改/);
-  assert.match(adapter, /applyViewRow\(change\.new\)/);
-  assert.match(adapter, /response\?\.view\?\.players[\s\S]{0,260}applyViewRow/);
-  assert.match(adapter, /else await refresh\(\);/);
+  assert.match(adapter, /refresh\(\)\.catch\(\(\) => \{\}\)/);
+  assert.match(adapter, /events = \[\.\.\.\(payload\.events \|\| \[\]\)\]\.sort/);
+  assert.match(adapter, /await onEvent\?\.\(item\.event[\s\S]{0,180}applyView/);
+  assert.match(adapter, /finally \{[\s\S]{0,220}applyView/);
+  assert.match(adapter, /deliverEvent\(\{ version:response\.version, event:response\.result, view:response\.view \}/);
 });
 
 test("数据库只向客户端开放成员、房间和本人投影视图", () => {

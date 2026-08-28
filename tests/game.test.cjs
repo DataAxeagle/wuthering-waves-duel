@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { DuelGame, TONES } = require("../demo/core.js");
+const { DuelGame, TONES, HEROES } = require("../demo/core.js");
 const catalog = require("../demo/card-library/catalog.js");
 
 function start() {
@@ -77,6 +77,34 @@ test("回合开始与结束的角色触发按卡面时机抽牌", () => {
   assert.equal(player.hand.length, beforeStart + 1);
 });
 
+test("未限制领队的角色效果可由后台触发，领队限定效果只由当前领队触发", () => {
+  const game = start();
+  const player = game.players[0];
+  player.activeHero = 0;
+  player.heroes[1].stack.push({ name: "后台常驻", text: "【己方回合开始时】抽1张卡。" });
+  player.heroes[1].stack.push({ name: "后台协奏", text: "【各回合结束时】将己方卡组顶1张卡置于协奏区。" });
+  player.heroes[1].stack.push({ name: "后台对抗", text: "【对抗】己方以红色卡对抗时，造成1点伤害。" });
+  player.heroes[2].stack.push({ name: "后台领队", text: "【领队】【己方回合开始时】抽1张卡。" });
+  player.heroes[2].stack.push({ name: "后台领队对抗", text: "【领队】己方以红色卡对抗时，造成1点伤害。" });
+
+  assert.deepEqual(game.triggerTurnStart(0).map((effect) => effect.cardName), ["后台常驻"]);
+  assert.deepEqual(game.triggerTurnEnd(0).map((effect) => effect.cardName), ["后台协奏"]);
+  const contestEffect = game.triggerContestEffects(0, { tone: "blaze" }, { tone: "tide" });
+  assert.deepEqual(contestEffect.roleTriggers.map((effect) => effect.cardName), ["后台对抗"]);
+  assert.equal(contestEffect.damage, 1);
+});
+
+test("角色效果仅在自身明确标注领队时限制后台触发", () => {
+  const game = start();
+  const player = game.players[0];
+  player.activeHero = 0;
+  player.heroes[1].stack.push({ name: "引用领队技的后台被动", text: "己方拥有【领队技】的「炽霞」卡伤害+3。" });
+  player.heroes[2].stack.push({ name: "明确领队的后台被动", text: "【领队】己方以红色卡对抗时，造成1点伤害。" });
+
+  assert.equal(game.isLeaderRestrictedRole(player.heroes[1].stack.at(-1)), false);
+  assert.equal(game.isLeaderRestrictedRole(player.heroes[2].stack.at(-1)), true);
+});
+
 test("男漂泊者 Lv.2 在任一方回合结束时都为己方抽牌，女漂泊者仅在己方回合开始时额外抽牌", () => {
   const game = start();
   game.players[0].heroes[0].stack.push({ name: "漂泊者（男）", text: "【领队】【各回合结束时】抽1张卡。" });
@@ -129,6 +157,15 @@ test("桌面端先展示并提交回合开始角色效果，再展示常规抽�
   assert.ok(sequence.indexOf("animateAndCommitDeferredEffect") < sequence.indexOf("animateTurnDraw"));
 });
 
+test("双方协奏区的公开牌可打开完整查看面板", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "demo", "game.js"), "utf8");
+  assert.match(source, /data-charge-player/);
+  assert.match(source, /data-charge-card/);
+  assert.match(source, /pile: "charge"/);
+  assert.match(source, /isCharge = roleDeckViewer\.pile === "charge"/);
+  assert.match(source, /const pileName = isDiscard \? "弃牌区" : isCharge \? "协奏区"/);
+});
+
 test("炽霞 Lv.2、啾啾斗意与朔风旋涌按卡面处理伤害、回手和下回合红牌加费", () => {
   const game = start();
   game.players[0].activeHero = 2;
@@ -170,6 +207,30 @@ test("移岁迷邪只在己方行动区达到三张时连击额外造成三点�
   player.actionZone = [card(game, {}), card(game, {}), migui];
   assert.equal(game.comboDamageBonus(0, migui, false), 0);
   assert.equal(game.comboDamageBonus(0, migui, true), 3);
+});
+
+test("【连击】牌只能在追击阶段使用，领队技与额外连击条件必须同时满足", () => {
+  const game = start();
+  const player = game.players[0];
+  const combo = card(game, { name: "后台换位连击", tone: "tide", kind: "dodge", text: "【连击】切换己方领队。" });
+  const migui = card(game, { id: "SD02-011", name: "移岁迷邪", leaderOnly: "jinhsi", attack: 5, text: "【领队技】己方领队为此卡专属角色时方可使用；【连击】若己方行动区有3张或以上的卡，此卡伤害+3。" });
+  player.hand = [combo, migui];
+  energy(game, 0, 3);
+
+  assert.equal(game.legalContestCards(0).some((card) => card.uid === combo.uid), false);
+  assert.equal(game.legalContestCards(0).some((card) => card.uid === migui.uid), false);
+  assert.equal(game.beginContest(0, combo.uid).ok, false);
+
+  game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+  game.phase = "pursuit";
+  assert.equal(game.legalPursuitCards(0).some((card) => card.uid === combo.uid), true);
+  assert.equal(game.legalPursuitCards(0).some((card) => card.uid === migui.uid), false);
+
+  player.activeHero = 1;
+  player.actionZone = [card(game, {})];
+  assert.equal(game.legalPursuitCards(0).some((card) => card.uid === migui.uid), false);
+  player.actionZone.push(card(game, {}));
+  assert.equal(game.legalPursuitCards(0).some((card) => card.uid === migui.uid), true);
 });
 
 test("移岁迷邪在首轮己方牌后再完成一次追击时，会计入自身成为行动区第 3 张并获得加伤", () => {
@@ -280,6 +341,8 @@ test("男女漂泊者 Lv.0 以绿色卡对抗时无论胜负均抽取两张卡",
       assert.ok(leaderEffect, `${preset} 的 Lv.0 应在绿色牌对抗时抽 2 张`);
       const roleTrigger = result.effects.flatMap((effect) => effect.roleTriggers || []).find((trigger) => trigger.playerIndex === 0 && trigger.draw === 2);
       assert.deepEqual(roleTrigger && { cardName: roleTrigger.cardName, timing: roleTrigger.timing, draw: roleTrigger.draw }, { cardName: game.players[0].heroes[0].name, timing: "判定", draw: 2 });
+      result.effects.forEach((effect) => game.commitDeferredEffect(effect));
+      for (const pending of [...game.pendingDeferredEffects]) game.commitPendingDeferredEffect(pending.playerIndex, pending.effectId);
       game.startTurn(0, false);
     }
   }
@@ -491,13 +554,52 @@ test("卡牌测试场可为每张行动卡自动配置可用领队与费用", ()
     });
     game.confirmSetup(0);
     if (template.leaderOnly) {
-      const heroIndex = game.players[0].heroes.findIndex((hero) => hero.id === template.leaderOnly);
-      assert.notEqual(heroIndex, -1, `${template.name} 缺少测试领队`);
+      let heroIndex = game.players[0].heroes.findIndex((hero) => hero.id === template.leaderOnly);
+      if (heroIndex < 0) {
+        const role = catalog.cards.find((card) => card.type === "character" && card.hero === template.leaderOnly && card.level === 0);
+        assert.ok(role && HEROES[template.leaderOnly], `${template.name} 缺少测试领队资料`);
+        heroIndex = 0;
+        game.players[0].heroes[heroIndex] = Object.assign({}, HEROES[template.leaderOnly], { level: 0, stack: [role], roleCardIds: [role.id] });
+      }
       game.players[0].activeHero = heroIndex;
     }
     const action = game.makeCard(template);
     game.players[0].hand = [action];
     energy(game, 0, 8);
-    assert.ok(game.legalContestCards(0).some((card) => card.uid === action.uid), `${template.name} 未能进入测试场`);
+    if (game.isComboCard(action)) {
+      game.pursuit = { playerIndex: 0, originPlayer: 0, remaining: Infinity, source: "red" };
+      game.phase = "pursuit";
+      if (/行动区有3张(?:或)?以上的卡/.test(action.text || "")) game.players[0].actionZone = [card(game, {}), card(game, {})];
+      assert.ok(game.legalPursuitCards(0).some((card) => card.uid === action.uid), `${template.name} 未能在追击阶段进入测试场`);
+    } else {
+      assert.ok(game.legalContestCards(0).some((card) => card.uid === action.uid), `${template.name} 未能进入测试场`);
+    }
   }
+});
+
+test("卡牌测试场保持三名角色，并支持自动锁定专属领队与局内替换角色", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const mobileRoot = path.join(__dirname, "..", "mobile");
+  const html = fs.readFileSync(path.join(mobileRoot, "index.html"), "utf8");
+  const source = fs.readFileSync(path.join(mobileRoot, "game.js"), "utf8");
+  assert.match(html, /id="testLeaderHeroSelect"/);
+  assert.match(html, /id="testLeaderCardSelect"/);
+  assert.match(source, /function configureThreeHeroTestRoster/);
+  assert.match(source, /\.slice\(0, 3\)/);
+  assert.match(source, /player\.roleDeck = allCards\.filter/);
+  assert.match(source, /function replaceTestHeroSlot/);
+  assert.match(source, /data-test-swap-hero/);
+  assert.doesNotMatch(source, /test-lab-all-heroes/);
+});
+
+test("同一角色存在多张合法升级卡时必须先选择具体编号", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "..", "mobile", "game.js"), "utf8");
+  assert.match(source, /function openUpgradeRoleCardChoice/);
+  assert.match(source, /data-upgrade-role-card/);
+  assert.match(source, /if \(options\.length > 1\) return openUpgradeRoleCardChoice/);
+  assert.match(source, /roleCardId = upgradeRoleButton\.dataset\.upgradeRoleCard/);
+  assert.match(source, /candidate\.id/);
 });

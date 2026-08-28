@@ -8,17 +8,21 @@ const { presets } = require("../mobile/card-library/presets.js");
 const { presets: desktopPresets } = require("../demo/card-library/presets.js");
 
 test("实体卡组分类库只收录有来源卡面的卡牌", () => {
-  assert.equal(catalog.cards.length, 60);
-  assert.equal(new Set(catalog.cards.map((card) => card.id)).size, 60);
-  assert.equal(catalog.cards.filter((card) => card.type === "character").length, 26);
-  assert.equal(catalog.cards.filter((card) => card.type === "action").length, 34);
+  assert.equal(catalog.cards.length, 73);
+  assert.equal(new Set(catalog.cards.map((card) => card.id)).size, 73);
+  assert.equal(catalog.cards.filter((card) => card.type === "character").length, 35);
+  assert.equal(catalog.cards.filter((card) => card.type === "action").length, 38);
   for (const card of catalog.cards) {
     if (card.art) assert.ok(fs.existsSync(path.join(__dirname, "..", "mobile", "card-library", card.art)), `${card.id} 的手机版卡面缺失`);
   }
-  assert.equal(desktopCatalog.cards.length, 60);
-  assert.equal(desktopCatalog.cards.filter((card) => card.type === "character").length, 26);
-  assert.equal(desktopCatalog.cards.filter((card) => card.type === "action").length, 34);
-  assert.deepEqual(desktopCatalog.cards.map((card) => card.id), catalog.cards.map((card) => card.id));
+  assert.equal(desktopCatalog.cards.length, 73);
+  assert.equal(desktopCatalog.cards.filter((card) => card.type === "character").length, 35);
+  assert.equal(desktopCatalog.cards.filter((card) => card.type === "action").length, 38);
+  assert.deepEqual(
+    desktopCatalog.cards.map((card) => card.id).sort(),
+    catalog.cards.map((card) => card.id).sort(),
+    "桌面与手机版必须包含相同的卡牌 ID 集合",
+  );
   for (const id of ["BP01-032", "BP01-029", "BP01-026", "BP01-023", "BP01-005", "BP01-004", "BP01-003", "BP01-002"]) {
     assert.ok(catalog.cards.some((card) => card.id === id && card.type === "character"), `新增角色卡 ${id} 缺失`);
   }

@@ -11,7 +11,8 @@
   const SESSION_KEY = "waves-duel-pvp-session-v1";
   const NAME_KEY = "waves-duel-player-name-v1";
   const CUSTOM_DECKS_KEY = "waves-duel-custom-decks-v1";
-  let client = null, captchaToken = "", captchaWidgetId = null, captchaWaitTimer = null, channel = null, heartbeat = null, refreshBusy = false, restoreBusy = false;
+  const CAPTCHA_LOAD_TIMEOUT_MS = 15000;
+  let client = null, captchaToken = "", captchaWidgetId = null, captchaEpoch = 0, captchaAttempt = 0, captchaRenderPending = false, captchaScriptLoading = false, captchaWatchdog = null, captchaAuthPromise = null, authenticatedSession = false, channel = null, heartbeat = null, refreshBusy = false, restoreBusy = false, leaveBusy = false;
   let session = loadSession(), payload = null;
 
   function escapeHtml(value) { return String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[char]); }
@@ -25,49 +26,118 @@
     elements.turnstileStatus.textContent = message;
     elements.turnstileRetry.classList.toggle("hidden", !retry);
   }
+  function clearCaptchaWatchdog() {
+    if (captchaWatchdog !== null) clearTimeout(captchaWatchdog);
+    captchaWatchdog = null;
+  }
+  function armCaptchaWatchdog() {
+    clearCaptchaWatchdog();
+    const attempt = ++captchaAttempt;
+    captchaWatchdog = setTimeout(() => {
+      captchaWatchdog = null;
+      if (attempt !== captchaAttempt || captchaToken || authenticatedSession) return;
+      markCaptchaBlocked("人机验证响应超时，请重新加载验证", true);
+    }, CAPTCHA_LOAD_TIMEOUT_MS);
+  }
   function markCaptchaVerified(message = "验证已完成，可以创建或加入房间") {
+    clearCaptchaWatchdog();
     setCaptchaStatus("success", message);
     setRoomActionsEnabled(true);
   }
   function markCaptchaBlocked(message, retry = false) {
+    if (authenticatedSession) return markCaptchaVerified("身份已验证，可以创建或加入房间");
     captchaToken = "";
     setCaptchaStatus(retry ? "error" : "loading", message, retry);
     setRoomActionsEnabled(false);
   }
   function removeCaptchaWidget() {
+    captchaEpoch += 1;
     if (captchaWidgetId !== null && window.turnstile) {
       try { window.turnstile.remove(captchaWidgetId); } catch { /* 组件可能尚未完成挂载 */ }
     }
     captchaWidgetId = null;
     elements.turnstile.replaceChildren();
   }
+  function loadTurnstileScript(force = false) {
+    if (window.turnstile) return Promise.resolve();
+    if (captchaScriptLoading && !force) return Promise.resolve();
+    const existing = document.querySelector("#wavesDuelTurnstileScript");
+    if (force && existing) existing.remove();
+    if (!force && existing) return Promise.resolve();
+    captchaScriptLoading = true;
+    const script = document.createElement("script");
+    script.id = "wavesDuelTurnstileScript";
+    script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=wavesDuelTurnstileReady";
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => { captchaScriptLoading = false; clearCaptchaWatchdog(); markCaptchaBlocked("人机验证脚本加载失败，请检查网络后重试", true); };
+    document.head.appendChild(script);
+    return Promise.resolve();
+  }
+  window.wavesDuelTurnstileReady = () => {
+    captchaScriptLoading = false;
+    if (captchaRenderPending && !authenticatedSession) renderCaptcha();
+  };
   function renderCaptcha() {
-    clearTimeout(captchaWaitTimer);
+    if (captchaWatchdog === null) armCaptchaWatchdog();
     removeCaptchaWidget();
     markCaptchaBlocked("正在加载人机验证……");
-    const startedAt = Date.now();
-    const waitForTurnstile = () => {
-      if (!window.turnstile) {
-        if (Date.now() - startedAt >= 15_000) return markCaptchaBlocked("人机验证加载失败，请检查网络后重试", true);
-        captchaWaitTimer = setTimeout(waitForTurnstile, 250);
-        return;
-      }
-      try {
+    captchaRenderPending = true;
+    if (!window.turnstile) { loadTurnstileScript(); return; }
+    captchaRenderPending = false;
+    const epoch = ++captchaEpoch;
+    const current = () => epoch === captchaEpoch;
+    try {
         captchaWidgetId = window.turnstile.render(elements.turnstile, {
           sitekey: config.turnstileSiteKey,
-          callback: (token) => { captchaToken = token; markCaptchaVerified(); if (session?.roomId) restoreExistingRoom(); },
-          "before-interactive-callback": () => markCaptchaBlocked("请完成上方人机验证"),
-          "error-callback": () => { markCaptchaBlocked("人机验证加载失败，请重试", true); return true; },
-          "expired-callback": () => markCaptchaBlocked("人机验证已过期，请重新验证", true),
-          "timeout-callback": () => markCaptchaBlocked("人机验证超时，请重试", true),
-          "unsupported-callback": () => markCaptchaBlocked("当前浏览器无法完成人机验证，请更换浏览器", true),
+          theme: "dark",
+          size: "flexible",
+          retry: "never",
+          callback: (token) => { if (!current()) return; clearCaptchaWatchdog(); void persistCaptchaSession(token); },
+          "before-interactive-callback": () => { if (current()) markCaptchaBlocked("请完成上方人机验证"); },
+          "error-callback": (code) => { if (current()) { clearCaptchaWatchdog(); markCaptchaBlocked(`人机验证失败（${code || "未知错误"}），请重试`, true); } return false; },
+          "expired-callback": () => { if (current()) { clearCaptchaWatchdog(); markCaptchaBlocked("人机验证已过期，请重新验证", true); } },
+          "timeout-callback": () => { if (current()) { clearCaptchaWatchdog(); markCaptchaBlocked("人机验证超时，请重试", true); } },
+          "unsupported-callback": () => { if (current()) { clearCaptchaWatchdog(); markCaptchaBlocked("当前浏览器无法完成人机验证，请更换浏览器", true); } },
         });
         setCaptchaStatus("loading", "请完成上方人机验证");
       } catch {
+        clearCaptchaWatchdog();
         markCaptchaBlocked("人机验证初始化失败，请重试", true);
       }
-    };
-    waitForTurnstile();
+  }
+  function retryCaptcha() {
+    clearCaptchaWatchdog();
+    armCaptchaWatchdog();
+    captchaRenderPending = true;
+    markCaptchaBlocked("正在重新加载人机验证……");
+    if (window.turnstile) renderCaptcha();
+    else loadTurnstileScript(true);
+  }
+
+  async function persistCaptchaSession(token) {
+    if (captchaAuthPromise) return captchaAuthPromise;
+    captchaToken = token;
+    setCaptchaStatus("loading", "验证已通过，正在建立联机身份……");
+    setRoomActionsEnabled(false);
+    captchaAuthPromise = (async () => {
+      const { data, error } = await client.auth.signInAnonymously({ options:{ captchaToken:token } });
+      captchaToken = "";
+      if (error) throw error;
+      if (!data?.session) throw new Error("anonymous_session_missing");
+      authenticatedSession = true;
+      markCaptchaVerified("联机身份已保存，可以创建或加入房间");
+      if (session?.roomId) restoreExistingRoom().catch((restoreError) => toast(restoreError.message));
+      return data.session;
+    })();
+    try { return await captchaAuthPromise; }
+    catch {
+      authenticatedSession = false;
+      captchaToken = "";
+      try { if (captchaWidgetId !== null) window.turnstile?.reset(captchaWidgetId); } catch { /* 由重试按钮兜底 */ }
+      markCaptchaBlocked("联机身份建立失败，请重新验证", true);
+      return null;
+    } finally { captchaAuthPromise = null; }
   }
 
   function availableDecks() {
@@ -82,8 +152,9 @@
   function chosenDeck() { return availableDecks().find((deck) => deck.id === elements.deck.value) || availableDecks()[0]; }
 
   async function ensureAuth() {
+    if (captchaAuthPromise) await captchaAuthPromise;
     const { data } = await client.auth.getSession();
-    if (data.session) return data.session;
+    if (data.session) { authenticatedSession = true; return data.session; }
     if (config.turnstileSiteKey && !captchaToken) throw new Error("请先完成人机验证");
     const options = captchaToken ? { captchaToken } : undefined;
     const { data: signed, error } = await client.auth.signInAnonymously({ options });
@@ -95,6 +166,7 @@
       }
       throw error;
     }
+    authenticatedSession = true;
     markCaptchaVerified("身份已验证，可以创建或加入房间");
     return signed.session;
   }
@@ -102,7 +174,14 @@
     const auth = await ensureAuth();
     const response = await fetch(`${config.supabaseUrl}/functions/v1/pvp/${operation}`, { method:"POST", headers:{ "content-type":"application/json", apikey:config.supabasePublishableKey, authorization:`Bearer ${auth.access_token}` }, body:JSON.stringify(body) });
     const result = await response.json().catch(() => ({ ok:false,error:`HTTP ${response.status}` }));
-    if (!response.ok || !result.ok) { const error=new Error(errorText(result.error)); error.code=result.error; throw error; }
+    if (!response.ok || !result.ok) {
+      if (response.status === 401 || result.error === "unauthorized") {
+        authenticatedSession = false;
+        await client.auth.signOut({ scope:"local" }).catch(() => {});
+        if (config.turnstileSiteKey) retryCaptcha();
+      }
+      const error=new Error(errorText(result.error)); error.code=result.error; throw error;
+    }
     return result;
   }
   function errorText(code) {
@@ -157,7 +236,18 @@
   async function refreshState() {
     if (refreshBusy || !session?.roomId) return;
     refreshBusy = true;
-    try { payload = await api("state", { roomId:session.roomId }); render(); } catch (error) { toast(error.message); }
+    try { payload = await api("state", { roomId:session.roomId }); render(); }
+    catch (error) {
+      if (["not_room_member", "room_not_found", "room_ended"].includes(error.code)) {
+        clearSession();
+        clearInterval(heartbeat);
+        if (channel) { await client.removeChannel(channel).catch(() => {}); channel = null; }
+        payload = null;
+        elements.lobby.classList.add("hidden");
+        elements.setup.classList.remove("hidden");
+        toast("原房间已经关闭，可以重新创建或加入房间");
+      } else toast(error.message);
+    }
     finally { refreshBusy = false; }
   }
 
@@ -186,10 +276,28 @@
     catch(error) { toast(error.message); }
   }
   async function leaveRoom() {
+    if (leaveBusy) return;
     if(payload?.room?.status==="ended") { clearSession(); location.href="index.html"; return; }
     if (!confirm(payload?.room?.status === "in_game" ? "确定认输并结束本局吗？" : "确定离开房间吗？")) return;
-    try { if (payload?.members?.length===2) await api("forfeit",{roomId:session.roomId}); } catch(error) { toast(error.message); }
-    clearSession(); location.href="index.html";
+    leaveBusy = true;
+    elements.leave.disabled = true;
+    elements.leave.textContent = "正在离开…";
+    try {
+      await api("leave", { roomId:session.roomId });
+      clearSession();
+      location.href="index.html";
+    } catch(error) {
+      if (["not_room_member", "room_not_found", "room_ended"].includes(error.code)) {
+        clearSession();
+        location.href="index.html";
+        return;
+      }
+      toast(`离开失败：${error.message}，请检查网络后重试`);
+    } finally {
+      leaveBusy = false;
+      elements.leave.disabled = false;
+      elements.leave.textContent = "离开房间";
+    }
   }
   async function claimTimeout() {
     if (!confirm("确认按断线规则取得本局胜利吗？")) return;
@@ -206,14 +314,19 @@
     if (!config.supabaseUrl || !config.supabasePublishableKey) { elements.warning.textContent="PVP 后端尚未配置：部署前需填写 Supabase Project URL 与 publishable key。单人版不受影响。"; elements.warning.classList.remove("hidden"); markCaptchaBlocked("PVP 后端尚未配置"); return; }
     client=window.supabase.createClient(config.supabaseUrl,config.supabasePublishableKey,{auth:{persistSession:true,autoRefreshToken:true}});
     const { data: existingAuth } = await client.auth.getSession();
-    if (existingAuth.session) markCaptchaVerified("身份已验证，可以创建或加入房间");
+    if (existingAuth.session) {
+      const { data: verifiedAuth, error: authError } = await client.auth.getUser();
+      authenticatedSession = Boolean(verifiedAuth?.user) && !authError;
+      if (!authenticatedSession) await client.auth.signOut({ scope:"local" }).catch(() => {});
+    }
+    if (authenticatedSession) markCaptchaVerified("身份已验证，可以创建或加入房间");
     else if(config.turnstileSiteKey) renderCaptcha();
     else { setCaptchaStatus("success", "无需人机验证"); setRoomActionsEnabled(true); }
-    if(session?.roomId && (existingAuth.session || !config.turnstileSiteKey)) await restoreExistingRoom();
+    if(session?.roomId && (authenticatedSession || !config.turnstileSiteKey)) await restoreExistingRoom();
   }
   elements.create.addEventListener("click",()=>createRoom().catch((error)=>toast(error.message)));
   elements.join.addEventListener("click",()=>joinRoom().catch((error)=>toast(error.message)));
-  elements.turnstileRetry.addEventListener("click",renderCaptcha);
+  elements.turnstileRetry.addEventListener("click",retryCaptcha);
   elements.ready.addEventListener("click",toggleReady); elements.leave.addEventListener("click",leaveRoom); elements.copy.addEventListener("click",copyInvite);
   window.addEventListener("online",()=>{if(client)refreshState();}); window.addEventListener("pageshow",()=>{if(client)refreshState();}); document.addEventListener("visibilitychange",()=>{if(client&&!document.hidden&&session?.roomId){api("heartbeat",{roomId:session.roomId}).catch(()=>{});refreshState();}});
   init().catch((error)=>toast(error.message));

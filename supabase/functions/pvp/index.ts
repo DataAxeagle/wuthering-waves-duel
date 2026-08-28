@@ -26,6 +26,8 @@ function randomToken(bytes = 24) { const data = crypto.getRandomValues(new Uint8
 function randomCode() { const bytes = crypto.getRandomValues(new Uint8Array(6)); return Array.from(bytes, (value) => ALPHABET[value % ALPHABET.length]).join(""); }
 async function digest(value: string) { const data = new TextEncoder().encode(value); return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", data)), (byte) => byte.toString(16).padStart(2, "0")).join(""); }
 function cleanName(value: unknown) { return String(value || "").trim().replace(/\s+/g, " ").slice(0, 16); }
+function receiptEvent(value: any) { return value?.format === "pvp-receipt-v2" ? value.event : value; }
+function receiptSnapshot(value: any) { return value?.format === "pvp-receipt-v2" && value.snapshot?.players ? value.snapshot : null; }
 function asDeck(value: any) {
   const roleCards = Array.isArray(value?.roleCards) ? value.roleCards.map(String) : [];
   const actions = Array.isArray(value?.actions) ? value.actions.map((entry: any) => [String(entry?.[0] || ""), Number(entry?.[1])]) : Object.entries(value?.actions || {}).map(([id, count]) => [id, Number(count)]);
@@ -118,6 +120,12 @@ Deno.serve(async (request) => {
       const { data: memberships } = await service.from("pvp_room_members").select("room_id").eq("user_id", userId);
       const memberRoomIds = (memberships || []).map((item: any) => item.room_id);
       if (memberRoomIds.length) {
+        const { data: strandedRooms } = await service.from("pvp_rooms").select("id,host_user_id,status").in("id", memberRoomIds).eq("status", "waiting");
+        for (const stranded of strandedRooms || []) {
+          if (stranded.host_user_id !== userId) continue;
+          const { count } = await service.from("pvp_room_members").select("*", { count: "exact", head: true }).eq("room_id", stranded.id);
+          if ((count || 0) <= 1) await service.from("pvp_rooms").delete().eq("id", stranded.id).eq("host_user_id", userId).eq("status", "waiting");
+        }
         const { count: activeCount } = await service.from("pvp_rooms").select("id", { count: "exact", head: true }).in("id", memberRoomIds).in("status", ["waiting", "in_game"]);
         if ((activeCount || 0) > 0) throw new Error("already_in_room");
       }
@@ -178,7 +186,52 @@ Deno.serve(async (request) => {
       const { data: view } = await service.from("pvp_player_views").select("*").eq("room_id", roomId).eq("user_id", userId).maybeSingle();
       const { data: room } = await service.from("pvp_rooms").select("id,room_code,status,winner_seat,result_reason,expires_at").eq("id", roomId).single();
       const { data: members } = await service.from("pvp_room_members").select("seat,display_name,avatar_id,deck_name,ready,last_seen_at").eq("room_id", roomId).order("seat");
-      return reply(request, { ok: true, requestId, room, members, seat: member.seat, view });
+      const sinceVersion = Number(body.sinceVersion);
+      let events: any[] = [];
+      let hasMore = false;
+      if (["in_game", "ended"].includes(room?.status) && Number.isSafeInteger(sinceVersion) && sinceVersion >= 0) {
+        const { data: match } = await service.from("pvp_matches").select("id").eq("room_id", roomId).maybeSingle();
+        if (match?.id) {
+          const { data: receipts, error: receiptsError } = await service.from("pvp_action_receipts").select("version,result").eq("match_id", match.id).gt("version", sinceVersion).order("version", { ascending: true }).limit(101);
+          if (receiptsError) throw receiptsError;
+          hasMore = (receipts || []).length > 100;
+          events = (receipts || []).slice(0, 100).map((receipt: any) => {
+            const snapshot = receiptSnapshot(receipt.result);
+            return {
+              version: Number(receipt.version),
+              event: sanitizeEvent(receiptEvent(receipt.result), Number(member.seat)),
+              view: snapshot ? projectState(snapshot, Number(member.seat)) : null,
+            };
+          });
+        }
+      }
+      return reply(request, { ok: true, requestId, room, members, seat: member.seat, view, events, hasMore });
+    }
+    if (operation === "leave") {
+      const { data: room, error: roomError } = await service.from("pvp_rooms").select("id,status,host_user_id").eq("id", roomId).maybeSingle();
+      if (roomError) throw roomError;
+      if (!room) return reply(request, { ok: true, requestId, left: true, terminal: "room_not_found" });
+      if (room.status === "ended" || room.status === "abandoned") return reply(request, { ok: true, requestId, left: true, terminal: "room_ended" });
+      if (room.status === "in_game") {
+        const { data: winner, error } = await service.rpc("finish_pvp_room", { p_room_id: roomId, p_actor_id: userId, p_reason: "forfeit" });
+        if (error) throw error;
+        return reply(request, { ok: true, requestId, left: true, winnerSeat: winner == null ? null : Number(winner) });
+      }
+      const { count } = await service.from("pvp_room_members").select("*", { count: "exact", head: true }).eq("room_id", roomId);
+      if (room.host_user_id === userId || (count || 0) <= 1) {
+        const { error } = await service.from("pvp_rooms").delete().eq("id", roomId).eq("status", "waiting");
+        if (error) throw error;
+      } else {
+        const { error: deckError } = await service.from("pvp_deck_submissions").delete().eq("room_id", roomId).eq("user_id", userId);
+        if (deckError) throw deckError;
+        const { error: viewError } = await service.from("pvp_player_views").delete().eq("room_id", roomId).eq("user_id", userId);
+        if (viewError) throw viewError;
+        const { error: memberDeleteError } = await service.from("pvp_room_members").delete().eq("room_id", roomId).eq("user_id", userId);
+        if (memberDeleteError) throw memberDeleteError;
+        await service.from("pvp_room_members").update({ ready: false }).eq("room_id", roomId);
+        await notifyRoom(service, roomId, "member_left");
+      }
+      return reply(request, { ok: true, requestId, left: true });
     }
     if (operation === "ready") {
       const deck = asDeck(body.deck);
@@ -212,7 +265,7 @@ Deno.serve(async (request) => {
       const { data: receipt } = await service.from("pvp_action_receipts").select("version,result").eq("match_id", match.id).eq("user_id", userId).eq("action_id", actionId).maybeSingle();
       if (receipt) {
         const { data: currentView } = await service.from("pvp_player_views").select("view").eq("room_id", roomId).eq("user_id", userId).single();
-        return reply(request, { ok: true, requestId, version: receipt.version, duplicate: true, result: sanitizeEvent(receipt.result, Number(member.seat)), view: currentView?.view || null });
+        return reply(request, { ok: true, requestId, version: receipt.version, duplicate: true, result: sanitizeEvent(receiptEvent(receipt.result), Number(member.seat)), view: currentView?.view || null });
       }
       if (!Number.isSafeInteger(expectedVersion) || expectedVersion !== Number(match.version)) throw new Error("stale_version");
       const game = new gameCore.DuelGame({ seed: 1, multiplayer: true });
@@ -220,12 +273,13 @@ Deno.serve(async (request) => {
       if (!loaded.ok) throw new Error("invalid_match_state");
       const result = runCommand(game, Number(member.seat), String(body.type || ""), body.payload || {});
       const snapshot = game.snapshot();
-      const { data: committed, error } = await service.rpc("commit_pvp_state", { p_match_id: match.id, p_expected_version: expectedVersion, p_actor_id: userId, p_action_id: actionId, p_state: snapshot, p_result: result, p_view_zero: projectState(snapshot, 0), p_view_one: projectState(snapshot, 1), p_event_zero: sanitizeEvent(result, 0), p_event_one: sanitizeEvent(result, 1), p_winner_seat: game.winner }).single();
+      const receiptPayload = { format: "pvp-receipt-v2", event: result, snapshot };
+      const { data: committed, error } = await service.rpc("commit_pvp_state", { p_match_id: match.id, p_expected_version: expectedVersion, p_actor_id: userId, p_action_id: actionId, p_state: snapshot, p_result: receiptPayload, p_view_zero: projectState(snapshot, 0), p_view_one: projectState(snapshot, 1), p_event_zero: sanitizeEvent(result, 0), p_event_one: sanitizeEvent(result, 1), p_winner_seat: game.winner }).single();
       if (error) throw new Error(error.message.includes("stale_version") ? "stale_version" : error.message.includes("match_ended") ? "match_ended" : error.message);
       const committedRow = committed as { new_version: number; duplicate: boolean; stored_result: unknown };
       if (committedRow.duplicate) {
         const { data: currentView } = await service.from("pvp_player_views").select("view").eq("room_id", roomId).eq("user_id", userId).single();
-        return reply(request, { ok: true, requestId, version: committedRow.new_version, duplicate: true, result: sanitizeEvent(committedRow.stored_result, Number(member.seat)), view: currentView?.view || null });
+        return reply(request, { ok: true, requestId, version: committedRow.new_version, duplicate: true, result: sanitizeEvent(receiptEvent(committedRow.stored_result), Number(member.seat)), view: currentView?.view || null });
       }
       return reply(request, { ok: true, requestId, version: committedRow.new_version, duplicate: false, result: sanitizeEvent(committedRow.stored_result, Number(member.seat)), view: projectState(snapshot, Number(member.seat)) });
     }

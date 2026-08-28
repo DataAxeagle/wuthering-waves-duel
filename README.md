@@ -15,7 +15,12 @@
 
 玩家名称、战绩、局内存档和自组卡组保存在当前 Windows 用户资料中；API Key 单独保存在 Windows 凭据管理器。更新或覆盖分享包不会清空这些资料。
 
-## v1.6 重点更新
+## 在线游玩
+
+- [最新版手机版（Cloudflare Pages）](https://wuthering-waves-duel-mobile.pages.dev)
+- [B 站游玩入口](https://www.bilibili.com/toy/Wuthering_Waves/index.html)
+
+## v0.1.7 重点更新
 
 - 电脑端修复 AI 在盖牌、行动、动画或追击阶段异常后可能残留锁定状态的问题；异常时会安全结束 AI 追击并恢复调度。
 - 当前桌面分享包与稳定 EXE 均使用同一套 201 文件 `app/` 基线，并包含新增的 8 张角色牌图片。

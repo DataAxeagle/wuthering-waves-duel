@@ -1,13 +1,13 @@
 {
   "schemaVersion": 2,
   "title": "鸣潮对决卡组分类库",
-  "source": "卡牌素材（2026-08-15）",
+  "source": "卡牌素材（更新至 2026-08-27，含 BP01-058）",
   "dedupe": {
     "method": "source SHA-256",
-    "sourceFiles": 50,
+    "sourceFiles": 51,
     "exactDuplicateFiles": 0,
-    "uniqueCards": 52,
-    "originalSourceFiles": 49
+    "uniqueCards": 53,
+    "originalSourceFiles": 50
   },
   "categories": [
     "角色牌",
@@ -1401,6 +1401,33 @@
       "faction": "黑海岸",
       "watermark": "SAMPLE (source retained; not removed)",
       "text": "【升级】将此卡放回角色卡组。\n【领队】己方每回合受到的第二次伤害-1。"
+    },
+    {
+      "id": "BP01-058",
+      "sourceImage": "BP01-058-解限.png（用户提供，2026-08-27）",
+      "sourceCrop": {
+        "x": 207,
+        "y": 358,
+        "width": 765,
+        "height": 1072
+      },
+      "level": null,
+      "art": "art/绿色功能/BP01-058.png",
+      "category": "绿色功能",
+      "type": "action",
+      "name": "解限",
+      "tone": "gale",
+      "kind": "attack",
+      "cost": 0,
+      "speed": 5,
+      "attack": 0,
+      "text": "【判定】若己方胜利，抽2张卡。\n【优势】（若上个回合己方对抗胜利或对方跳过对抗阶段，获得此技能）【判定】若己方失败且己方领队为「守岸人」，本回合对方不能连击。",
+      "actionType": null,
+      "actionSubtype": null,
+      "resonance": "衍射",
+      "boundHero": "shorekeeper",
+      "binding": "专属",
+      "watermark": "SAMPLE (source retained; not removed)"
     }
   ]
 }

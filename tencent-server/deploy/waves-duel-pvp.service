@@ -1,0 +1,24 @@
+[Unit]
+Description=Waves Duel Tencent PVP Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=wavesduel
+Group=wavesduel
+WorkingDirectory=/opt/waves-duel/tencent-server
+EnvironmentFile=/opt/waves-duel/tencent-server/.env
+ExecStart=/usr/bin/node /opt/waves-duel/tencent-server/server.mjs
+Restart=always
+RestartSec=3
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/waves-duel/data
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
